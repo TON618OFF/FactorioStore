@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="steel_gray">#5E6D70</color>
+    <color name="iron_ore">#A6A29E</color>
+    <color name="copper_brown">#B87333</color>
+    <color name="coal_black">#2F2F2F</color>
+    <color name="oil_blue">#3A4F7A</color>
+    <color name="stone_beige">#C4B89F</color>
+    <color name="circuit_green">#4A704A</color>
+    <color name="hazard_yellow">#FFC107</color>
+    <color name="smoke_white">#D9D9D9</color>
+    <color name="light_steel">#FFFFFF</color>
+    <color name="iron_silver">#8A9396</color>
+    <color name="copper_light">#D68A59</color>
+    <color name="coal_gray">#4A4A4A</color>
+    <color name="oil_teal">#5A769A</color>
+    <color name="stone_light">#E0D8C3</color>
+    <color name="circuit_lime">#7A9A7A</color>
+    <color name="hazard_orange">#FF9800</color>
+    <color name="smoke_off_white">#F5F5F5</color>
+</resources>

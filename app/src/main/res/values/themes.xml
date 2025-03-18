@@ -1,0 +1,22 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Factorio" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/copper_light</item>           <!-- Основной цвет (акценты, кнопки) -->
+        <item name="colorPrimaryVariant">@color/oil_teal</item>        <!-- Вариант основного цвета -->
+        <item name="colorOnPrimary">@color/smoke_off_white</item>      <!-- Цвет текста на основном цвете -->
+        <item name="colorSecondary">@color/circuit_lime</item>         <!-- Вторичный цвет (доп. акценты) -->
+        <item name="colorSecondaryVariant">@color/stone_light</item>   <!-- Вариант вторичного цвета -->
+        <item name="colorOnSecondary">@color/coal_gray</item>          <!-- Цвет текста на вторичном -->
+        <item name="android:colorBackground">@color/light_steel</item> <!-- Фон приложения -->
+        <item name="colorSurface">@color/smoke_off_white</item>        <!-- Цвет поверхностей (карточек) -->
+        <item name="colorOnSurface">@color/iron_silver</item>          <!-- Цвет текста на поверхностях -->
+        <item name="colorError">@color/hazard_orange</item>            <!-- Цвет ошибок и предупреждений -->
+        <item name="colorOnError">@color/smoke_off_white</item>        <!-- Цвет текста на ошибках -->
+        <item name="android:textColor">@color/iron_silver</item>       <!-- Основной цвет текста -->
+        <item name="android:textColorHint">@color/coal_gray</item>     <!-- Цвет подсказок -->
+    </style>
+
+    <style name="Theme.Factorio" parent="Base.Theme.Factorio" />
+</resources>

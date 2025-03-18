@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="8dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/search_input_layout"
+        android:layout_width="250dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="10dp"
+        android:hint="Искать в Factorio Store"
+        app:hintTextColor="@color/copper_light"
+        app:boxBackgroundColor="@color/coal_gray"
+        app:boxStrokeWidth="0dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textColor="@color/smoke_off_white"
+            android:contentDescription="search_bar"
+            android:textSize="14sp"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/favorite_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="15dp"
+        android:layout_alignTop="@id/search_input_layout"
+        android:layout_toEndOf="@id/search_input_layout"
+        android:src="@drawable/favorite"
+        app:backgroundTint="@color/copper_light"
+        app:tint="@color/coal_black"
+        app:fabSize="normal"
+        app:rippleColor="@color/hazard_orange"
+        app:shapeAppearanceOverlay="@style/RoundedButtonStyle"
+        android:contentDescription="Избранное" />
+</RelativeLayout>
