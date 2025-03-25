@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/coal_black"
+    tools:context=".ProductDetailsActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Изображение товара -->
+        <ImageView
+            android:id="@+id/product_image"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="Изображение товара"
+            tools:src="@drawable/ic_placeholder"/>
+
+        <!-- Название товара -->
+        <TextView
+            android:id="@+id/product_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Название товара"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:layout_marginTop="16dp"/>
+
+        <!-- Описание товара -->
+        <TextView
+            android:id="@+id/product_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Описание товара"
+            android:textSize="16sp"
+            android:textColor="@color/smoke_white"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/product_category"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Категория: "
+            android:textSize="16sp"
+            android:textColor="@color/steel_gray"
+            android:layout_marginTop="8dp"/>
+
+        <!-- Цена товара -->
+        <TextView
+            android:id="@+id/product_price"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="429 руб."
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/circuit_lime"
+            android:layout_marginTop="16dp"/>
+
+        <!-- Кнопка "Добавить в корзину" -->
+        <Button
+            android:id="@+id/add_to_cart_button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Добавить в корзину"
+            android:textSize="16sp"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/circuit_green"
+            app:cornerRadius="8dp"
+            android:layout_marginTop="16dp"/>
+
+        <!-- Заголовок "Отзывы" -->
+        <TextView
+            android:id="@+id/reviews_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Отзывы"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:layout_marginTop="24dp"/>
+
+        <!-- Поле для добавления отзыва (видимо только для авторизованных) -->
+        <LinearLayout
+            android:id="@+id/add_review_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/review_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Ваш отзыв"
+                android:textColor="@color/white"
+                android:textColorHint="@color/smoke_white"
+                android:backgroundTint="@color/coal_gray"
+                android:padding="12dp"
+                android:minHeight="100dp"
+                android:inputType="textMultiLine"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/rating_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Оценка:"
+                    android:textSize="16sp"
+                    android:textColor="@color/white"/>
+
+                <ImageView
+                    android:id="@+id/rating_star"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_star"
+                    android:contentDescription="Звёздочка рейтинга"/>
+
+                <TextView
+                    android:id="@+id/rating_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="5"
+                    android:textSize="16sp"
+                    android:textColor="@color/circuit_lime"/>
+
+                <SeekBar
+                    android:id="@+id/rating_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:max="5"
+                    android:progress="5"
+                    android:layout_marginStart="16dp"/>
+
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/submit_review_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Отправить отзыв"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:backgroundTint="@color/oil_teal"
+                app:cornerRadius="8dp"
+                android:layout_marginTop="16dp"/>
+
+        </LinearLayout>
+
+        <!-- Список отзывов -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/reviews_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:nestedScrollingEnabled="false"
+            tools:listitem="@layout/item_review"/>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
