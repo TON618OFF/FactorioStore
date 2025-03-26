@@ -53,16 +53,29 @@
             android:textColor="@color/steel_gray"
             android:layout_marginTop="8dp"/>
 
-        <!-- Цена товара -->
-        <TextView
-            android:id="@+id/product_price"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="429 руб."
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="@color/circuit_lime"
-            android:layout_marginTop="16dp"/>
+            android:layout_marginTop="8dp">
+            <!-- Цена товара -->
+            <TextView
+                android:id="@+id/product_price"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="429 руб."
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/circuit_lime"/>
+            <ImageView
+                android:id="@+id/favorite_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/favorite"
+                android:contentDescription="Иконка избранного" />
+        </LinearLayout>
+
 
         <!-- Кнопка "Добавить в корзину" -->
         <Button
@@ -128,7 +141,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_star"
+                    android:src="@drawable/rating_star"
                     android:contentDescription="Звёздочка рейтинга"/>
 
                 <TextView
@@ -138,16 +151,96 @@
                     android:layout_marginStart="4dp"
                     android:text="5"
                     android:textSize="16sp"
-                    android:textColor="@color/circuit_lime"/>
+                    android:textColor="@color/hazard_yellow"/>
 
-                <SeekBar
-                    android:id="@+id/rating_seekbar"
+                <RadioGroup
+                    android:id="@+id/rating_radio_group"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:max="5"
-                    android:progress="5"
-                    android:layout_marginStart="16dp"/>
+                    android:orientation="horizontal"
+                    android:layout_marginStart="16dp">
+
+                    <RadioButton
+                        android:id="@+id/rating_1"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="1"
+                        android:textColor="@color/hazard_yellow"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:layoutDirection="ltr"
+                        android:textAlignment="center"
+                        android:drawableTop="@drawable/custom_radio_button"
+                        android:drawablePadding="4dp"
+                        android:button="@null"
+                        android:checked="false"/>
+
+                    <RadioButton
+                        android:id="@+id/rating_2"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="2"
+                        android:textColor="@color/hazard_yellow"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:layoutDirection="ltr"
+                        android:textAlignment="center"
+                        android:drawableTop="@drawable/custom_radio_button"
+                        android:drawablePadding="4dp"
+                        android:button="@null"
+                        android:checked="false"/>
+
+                    <RadioButton
+                        android:id="@+id/rating_3"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="3"
+                        android:textColor="@color/hazard_yellow"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:layoutDirection="ltr"
+                        android:textAlignment="center"
+                        android:drawableTop="@drawable/custom_radio_button"
+                        android:drawablePadding="4dp"
+                        android:button="@null"
+                        android:checked="false"/>
+
+                    <RadioButton
+                        android:id="@+id/rating_4"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="4"
+                        android:textColor="@color/hazard_yellow"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:layoutDirection="ltr"
+                        android:textAlignment="center"
+                        android:drawableTop="@drawable/custom_radio_button"
+                        android:drawablePadding="4dp"
+                        android:button="@null"
+                        android:checked="false"/>
+
+                    <RadioButton
+                        android:id="@+id/rating_5"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="5"
+                        android:textColor="@color/hazard_yellow"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:layoutDirection="ltr"
+                        android:textAlignment="center"
+                        android:drawableTop="@drawable/custom_radio_button"
+                        android:drawablePadding="4dp"
+                        android:button="@null"
+                        android:checked="false"/>
+                </RadioGroup>
 
             </LinearLayout>
 

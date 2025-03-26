@@ -1,11 +1,12 @@
 package com.example.factorio;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -17,6 +18,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -34,7 +37,7 @@ public class MainPage extends Fragment {
     private FirebaseFirestore db;
     private List<Category> categoriesList;
     private List<Product> productsList;
-    private Map<String, String> categoryNames; // Кэш названий категорий
+    private Map<String, String> categoryNames;
 
     @Nullable
     @Override
@@ -45,18 +48,18 @@ public class MainPage extends Fragment {
         db = FirebaseFirestore.getInstance();
         categoryNames = new HashMap<>();
 
-        // Настройка RecyclerView для категорий (горизонтальный)
+        // Настройка RecyclerView для категорий
         categoriesRecyclerView = view.findViewById(R.id.categories_recycler_view);
         categoriesRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         categoriesList = new ArrayList<>();
         categoryAdapter = new CategoryAdapter(categoriesList);
         categoriesRecyclerView.setAdapter(categoryAdapter);
 
-        // Настройка RecyclerView для товаров (вертикальный)
+        // Настройка RecyclerView для товаров
         productsRecyclerView = view.findViewById(R.id.products_recycler_view);
         productsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         productsList = new ArrayList<>();
-        productAdapter = new ProductAdapter(productsList);
+        productAdapter = new ProductAdapter(getContext(), productsList);
         productsRecyclerView.setAdapter(productAdapter);
 
         // Загрузка данных из Firestore
@@ -65,8 +68,29 @@ public class MainPage extends Fragment {
         return view;
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
+            String productId = data.getStringExtra("productId");
+            boolean isFavorite = data.getBooleanExtra("isFavorite", false);
+            for (Product product : productsList) {
+                if (product.getId().equals(productId)) {
+                    product.setFavorite(isFavorite);
+                    break;
+                }
+            }
+            productAdapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadProductsFromFirestore();
+    }
+
     private void loadCategoriesAndProducts() {
-        // Сначала загружаем категории
         db.collection("categories")
                 .get()
                 .addOnCompleteListener(task -> {
@@ -78,7 +102,7 @@ public class MainPage extends Fragment {
                             String imageUrl = document.getString("imageUrl");
                             if (name != null && imageUrl != null) {
                                 categoriesList.add(new Category(name, imageUrl));
-                                categoryNames.put(document.getId(), name); // Кэшируем ID -> название
+                                categoryNames.put(document.getId(), name);
                             }
                         }
                         categoriesList.sort((c1, c2) -> {
@@ -87,8 +111,6 @@ public class MainPage extends Fragment {
                             return Integer.compare(id1, id2);
                         });
                         categoryAdapter.notifyDataSetChanged();
-
-                        // После успешной загрузки категорий загружаем товары
                         loadProductsFromFirestore();
                     } else {
                         Toast.makeText(getContext(), "Ошибка загрузки категорий: " + task.getException(), Toast.LENGTH_SHORT).show();
@@ -97,7 +119,84 @@ public class MainPage extends Fragment {
     }
 
     private void loadProductsFromFirestore() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            db.collection("products")
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            productsList.clear();
+                            for (QueryDocumentSnapshot document : task.getResult()) {
+                                String name = document.getString("name");
+                                String description = document.getString("description");
+                                Long priceLong = document.getLong("price");
+                                String imageUrl = document.getString("imageUrl");
+                                String categoryId = document.getString("category");
+                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
+                                    int price = priceLong.intValue();
+                                    String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
+                                    productsList.add(new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName));
+                                }
+                            }
+                            productAdapter.notifyDataSetChanged();
+                        }
+                    });
+            return;
+        }
+
+        String userId = user.getUid();
+        db.collection("users").document(userId).collection("favorites")
+                .addSnapshotListener((favoritesSnapshot, e) -> {
+                    if (e != null) {
+                        Toast.makeText(getContext(), "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    List<String> favoriteIds = new ArrayList<>();
+                    if (favoritesSnapshot != null) {
+                        for (QueryDocumentSnapshot doc : favoritesSnapshot) {
+                            favoriteIds.add(doc.getString("productId"));
+                        }
+                    }
+
+                    db.collection("products")
+                            .addSnapshotListener((productsSnapshot, error) -> {
+                                if (error != null) {
+                                    Toast.makeText(getContext(), "Ошибка: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+
+                                if (productsSnapshot != null) {
+                                    productsList.clear();
+                                    for (QueryDocumentSnapshot document : productsSnapshot) {
+                                        String name = document.getString("name");
+                                        String description = document.getString("description");
+                                        Long priceLong = document.getLong("price");
+                                        String imageUrl = document.getString("imageUrl");
+                                        String categoryId = document.getString("category");
+                                        if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
+                                            int price = priceLong.intValue();
+                                            String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
+                                            boolean isFavorite = favoriteIds.contains(document.getId());
+                                            Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName);
+                                            product.setFavorite(isFavorite);
+                                            productsList.add(product);
+                                        }
+                                    }
+                                    productAdapter.notifyDataSetChanged();
+                                }
+                            });
+                });
+    }
+    public void searchProducts(String query) {
+        if (query.isEmpty()) {
+            loadProductsFromFirestore();
+            return;
+        }
+
         db.collection("products")
+                .whereGreaterThanOrEqualTo("name", query)
+                .whereLessThanOrEqualTo("name", query + "\uf8ff")
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -107,7 +206,7 @@ public class MainPage extends Fragment {
                             String description = document.getString("description");
                             Long priceLong = document.getLong("price");
                             String imageUrl = document.getString("imageUrl");
-                            String categoryId = document.getString("category"); // Получаем ID категории
+                            String categoryId = document.getString("category");
                             if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
                                 int price = priceLong.intValue();
                                 String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
@@ -116,164 +215,8 @@ public class MainPage extends Fragment {
                         }
                         productAdapter.notifyDataSetChanged();
                     } else {
-                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + task.getException(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Ошибка поиска: " + task.getException(), Toast.LENGTH_SHORT).show();
                     }
                 });
-    }
-
-    // Модель для категории
-    public static class Category {
-        String name;
-        String imageUrl;
-
-        public Category(String name, String imageUrl) {
-            this.name = name;
-            this.imageUrl = imageUrl;
-        }
-    }
-
-    // Модель для товара
-    public static class Product {
-        String name;
-        String description;
-        int price;
-        String imageUrl;
-        String id;
-        String categoryId;
-        String categoryName;
-        boolean isFavorite;
-
-        public Product(String name, String description, int price, String imageUrl, String id, String categoryId, String categoryName) {
-            this.name = name;
-            this.description = description;
-            this.price = price;
-            this.imageUrl = imageUrl;
-            this.id = id;
-            this.categoryId = categoryId;
-            this.categoryName = categoryName;
-            this.isFavorite = false;
-        }
-    }
-
-    // Адаптер для товаров
-    private class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
-        private List<Product> products;
-
-        public ProductAdapter(List<Product> products) {
-            this.products = products;
-        }
-
-        @NonNull
-        @Override
-        public ProductViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_product, parent, false);
-            return new ProductViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
-            Product product = products.get(position);
-
-            holder.productName.setText(product.name);
-            holder.productCategory.setText("Категория: " + product.categoryName); // Отображаем категорию
-            holder.productDescription.setText(product.description);
-            holder.productPrice.setText(String.format("%d руб.", product.price));
-            Glide.with(MainPage.this)
-                    .load(product.imageUrl)
-                    .placeholder(R.drawable.ic_placeholder)
-                    .error(R.drawable.ic_placeholder)
-                    .into(holder.productImage);
-
-            holder.favoriteIcon.setSelected(product.isFavorite);
-            holder.favoriteIcon.setOnClickListener(v -> {
-                product.isFavorite = !product.isFavorite;
-                holder.favoriteIcon.setSelected(product.isFavorite);
-                String message = product.isFavorite ? "Добавлено в избранное" : "Удалено из избранного";
-                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-            });
-
-            holder.detailsButton.setOnClickListener(v -> {
-                Intent intent = new Intent(getContext(), ProductDetailsActivity.class);
-                intent.putExtra("productId", product.id);
-                intent.putExtra("categoryName", product.categoryName);
-                startActivity(intent);
-            });
-
-            holder.buyButton.setOnClickListener(v ->
-                    Toast.makeText(getContext(), "Купить " + product.name, Toast.LENGTH_SHORT).show());
-        }
-
-        @Override
-        public int getItemCount() {
-            return products.size();
-        }
-
-        class ProductViewHolder extends RecyclerView.ViewHolder {
-            ImageView productImage;
-            TextView productName;
-            TextView productCategory;
-            TextView productDescription;
-            TextView productPrice;
-            ImageView favoriteIcon;
-            Button detailsButton;
-            Button buyButton;
-
-            ProductViewHolder(@NonNull View itemView) {
-                super(itemView);
-                productImage = itemView.findViewById(R.id.product_image);
-                productName = itemView.findViewById(R.id.product_name);
-                productCategory = itemView.findViewById(R.id.product_category);
-                productDescription = itemView.findViewById(R.id.product_description);
-                productPrice = itemView.findViewById(R.id.product_price);
-                favoriteIcon = itemView.findViewById(R.id.favorite_icon);
-                detailsButton = itemView.findViewById(R.id.details_button);
-                buyButton = itemView.findViewById(R.id.buy_button);
-            }
-        }
-    }
-
-    // Адаптер для категорий остаётся без изменений
-    private class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
-        private List<Category> categories;
-
-        public CategoryAdapter(List<Category> categories) {
-            this.categories = categories;
-        }
-
-        @NonNull
-        @Override
-        public CategoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_category, parent, false);
-            return new CategoryViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-            Category category = categories.get(position);
-            holder.categoryName.setText(category.name);
-            Glide.with(MainPage.this)
-                    .load(category.imageUrl)
-                    .placeholder(R.drawable.ic_placeholder)
-                    .error(R.drawable.ic_placeholder)
-                    .into(holder.categoryImage);
-        }
-
-        @Override
-        public int getItemCount() {
-            return categories.size();
-        }
-
-        class CategoryViewHolder extends RecyclerView.ViewHolder {
-            ImageView categoryImage;
-            TextView categoryName;
-
-            CategoryViewHolder(@NonNull View itemView) {
-                super(itemView);
-                categoryImage = itemView.findViewById(R.id.category_image);
-                categoryName = itemView.findViewById(R.id.category_name);
-            }
-        }
     }
 }

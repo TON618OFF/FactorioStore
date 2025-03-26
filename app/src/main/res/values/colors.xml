@@ -20,4 +20,5 @@
     <color name="circuit_lime">#7A9A7A</color>
     <color name="hazard_orange">#FF9800</color>
     <color name="smoke_off_white">#F5F5F5</color>
+    <color name="really_red">#CE0000</color>
 </resources>

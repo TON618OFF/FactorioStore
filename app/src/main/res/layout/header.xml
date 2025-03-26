@@ -17,6 +17,7 @@
         app:boxStrokeWidth="0dp">
 
         <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/search_input_edit_text"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:textColor="@color/smoke_off_white"
@@ -31,7 +32,7 @@
         android:layout_marginStart="15dp"
         android:layout_alignTop="@id/search_input_layout"
         android:layout_toEndOf="@id/search_input_layout"
-        android:src="@drawable/favorite"
+        android:src="@drawable/favorite_on"
         app:backgroundTint="@color/copper_light"
         app:tint="@color/coal_black"
         app:fabSize="normal"

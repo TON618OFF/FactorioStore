@@ -2,9 +2,9 @@ package com.example.factorio;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.util.Log;
+import android.util.Patterns;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,16 +15,18 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private static final String TAG = "RegisterActivity";
-
-    private TextInputLayout emailLayout, passwordLayout, confirmPasswordLayout;
-    private TextInputEditText emailInput, passwordInput, confirmPasswordInput;
+    private TextInputEditText emailInput, passwordInput, confirmPasswordInput, nicknameInput, birthdayInput, addressInput;
+    private TextInputLayout emailLayout, passwordLayout, confirmPasswordLayout, nicknameLayout, birthdayLayout, addressLayout;
     private MaterialButton registerButton;
+    private TextView loginLink;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
@@ -33,127 +35,164 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        auth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
-
-        initViews();
-        setupListeners();
-
-        Log.d(TAG, "FirebaseAuth initialized: " + (auth != null));
-        Log.d(TAG, "FirebaseFirestore initialized: " + (db != null));
-    }
-
-    private void initViews() {
+        // Инициализация компонентов
         emailLayout = findViewById(R.id.emailLayout);
         passwordLayout = findViewById(R.id.passwordLayout);
         confirmPasswordLayout = findViewById(R.id.confirmPasswordLayout);
+        nicknameLayout = findViewById(R.id.nicknameLayout);
+        birthdayLayout = findViewById(R.id.birthdayLayout);
+        addressLayout = findViewById(R.id.addressLayout);
+
         emailInput = findViewById(R.id.emailInput);
         passwordInput = findViewById(R.id.passwordInput);
         confirmPasswordInput = findViewById(R.id.confirmPasswordInput);
+        nicknameInput = findViewById(R.id.nicknameInput);
+        birthdayInput = findViewById(R.id.birthdayInput);
+        addressInput = findViewById(R.id.addressInput);
+
         registerButton = findViewById(R.id.registerButton);
+        loginLink = findViewById(R.id.loginLink);
 
-        emailInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        passwordInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        confirmPasswordInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-    }
+        auth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
 
-    private void setupListeners() {
+        // Обработка клика по кнопке регистрации
         registerButton.setOnClickListener(v -> registerUser());
-        findViewById(R.id.loginLink).setOnClickListener(v -> {
-            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
-            startActivity(intent);
+
+        // Обработка клика по ссылке "Войти"
+        loginLink.setOnClickListener(v -> {
+            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
             finish();
         });
     }
 
     private void registerUser() {
-        emailLayout.setError(null);
-        passwordLayout.setError(null);
-        confirmPasswordLayout.setError(null);
+        // Сброс ошибок перед валидацией
+        clearErrors();
 
+        // Получение данных из полей
         String email = emailInput.getText().toString().trim();
         String password = passwordInput.getText().toString().trim();
         String confirmPassword = confirmPasswordInput.getText().toString().trim();
+        String nickname = nicknameInput.getText().toString().trim();
+        String birthday = birthdayInput.getText().toString().trim();
+        String address = addressInput.getText().toString().trim();
 
-        // Валидация
-        if (TextUtils.isEmpty(email)) {
-            emailLayout.setError("Введите email");
-            emailInput.requestFocus();
-            return;
-        }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailLayout.setError("Некорректный email");
-            emailInput.requestFocus();
-            return;
-        }
-        if (TextUtils.isEmpty(password)) {
-            passwordLayout.setError("Введите пароль");
-            passwordInput.requestFocus();
-            return;
-        }
-        if (password.length() < 6) {
-            passwordLayout.setError("Пароль должен быть не менее 6 символов");
-            passwordInput.requestFocus();
-            return;
-        }
-        if (TextUtils.isEmpty(confirmPassword)) {
-            confirmPasswordLayout.setError("Подтвердите пароль");
-            confirmPasswordInput.requestFocus();
-            return;
-        }
-        if (!password.equals(confirmPassword)) {
-            confirmPasswordLayout.setError("Пароли не совпадают");
-            confirmPasswordInput.requestFocus();
+        // Валидация полей
+        if (!validateInputs(email, password, confirmPassword, nickname, birthday, address)) {
             return;
         }
 
-        registerButton.setEnabled(false);
-        registerButton.setText("Регистрация...");
-
-        Log.d(TAG, "Attempting registration with email: " + email);
-
+        // Регистрация в Firebase Authentication
         auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, task -> {
+                .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        String uid = auth.getCurrentUser().getUid();
-                        Log.d(TAG, "Registration successful, UID: " + uid);
+                        String userId = auth.getCurrentUser().getUid();
 
-                        // Сохранение данных в Firestore
+                        // Создание объекта пользователя для Firestore
                         Map<String, Object> user = new HashMap<>();
                         user.put("email", email);
-                        user.put("createdAt", System.currentTimeMillis());
+                        user.put("nickname", nickname);
+                        user.put("birthday", birthday);
+                        user.put("address", address);
 
-                        db.collection("users").document(uid)
+                        // Сохранение данных в Firestore
+                        db.collection("users").document(userId)
                                 .set(user)
                                 .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "User data saved to Firestore for UID: " + uid);
-                                    Toast.makeText(RegisterActivity.this,
-                                            "Регистрация успешна",
-                                            Toast.LENGTH_SHORT).show();
-                                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
+                                    Toast.makeText(this, "Регистрация успешна, войдите в аккаунт", Toast.LENGTH_SHORT).show();
+                                    auth.signOut(); // Выход после регистрации
+                                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                                     finish();
                                 })
                                 .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Failed to save to Firestore: " + e.getMessage(), e);
-                                    Toast.makeText(RegisterActivity.this, "Ошибка сохранения данных: " + e.getMessage(),
-                                            Toast.LENGTH_SHORT).show();
-                                    // Всё равно переходим, так как аутентификация прошла
-                                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                    finish();
+                                    Toast.makeText(this, "Ошибка сохранения данных: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    // Удаляем пользователя из Auth, если Firestore не записался
+                                    auth.getCurrentUser().delete();
                                 });
                     } else {
-                        registerButton.setEnabled(true);
-                        registerButton.setText("Зарегистрироваться");
-                        String errorMessage = task.getException() != null ? task.getException().getMessage() : "Неизвестная ошибка";
-                        Log.e(TAG, "Registration failed: " + errorMessage);
-                        Toast.makeText(RegisterActivity.this,
-                                "Ошибка регистрации: " + errorMessage,
-                                Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, "Ошибка регистрации: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private boolean validateInputs(String email, String password, String confirmPassword, String nickname, String birthday, String address) {
+        boolean isValid = true;
+
+        // Валидация почты
+        if (email.isEmpty()) {
+            emailLayout.setError("Введите почту");
+            isValid = false;
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            emailLayout.setError("Некорректный формат почты");
+            isValid = false;
+        }
+
+        // Валидация пароля
+        if (password.isEmpty()) {
+            passwordLayout.setError("Введите пароль");
+            isValid = false;
+        } else if (password.length() < 6) {
+            passwordLayout.setError("Пароль должен содержать минимум 6 символов");
+            isValid = false;
+        }
+
+        // Валидация подтверждения пароля
+        if (confirmPassword.isEmpty()) {
+            confirmPasswordLayout.setError("Подтвердите пароль");
+            isValid = false;
+        } else if (!confirmPassword.equals(password)) {
+            confirmPasswordLayout.setError("Пароли не совпадают");
+            isValid = false;
+        }
+
+        // Валидация никнейма
+        if (nickname.isEmpty()) {
+            nicknameLayout.setError("Введите никнейм");
+            isValid = false;
+        } else if (nickname.length() < 3) {
+            nicknameLayout.setError("Никнейм должен содержать минимум 3 символа");
+            isValid = false;
+        }
+
+        // Валидация даты рождения
+        if (birthday.isEmpty()) {
+            birthdayLayout.setError("Введите дату рождения");
+            isValid = false;
+        } else if (!isValidDate(birthday)) {
+            birthdayLayout.setError("Некорректный формат даты (ДД.ММ.ГГГГ)");
+            isValid = false;
+        }
+
+        // Валидация адреса
+        if (address.isEmpty()) {
+            addressLayout.setError("Введите адрес");
+            isValid = false;
+        } else if (address.length() < 5) {
+            addressLayout.setError("Адрес должен содержать минимум 5 символов");
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private boolean isValidDate(String date) {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy");
+        sdf.setLenient(false); // Строгая проверка
+        try {
+            sdf.parse(date);
+            return true;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
+    private void clearErrors() {
+        emailLayout.setError(null);
+        passwordLayout.setError(null);
+        confirmPasswordLayout.setError(null);
+        nicknameLayout.setError(null);
+        birthdayLayout.setError(null);
+        addressLayout.setError(null);
     }
 }

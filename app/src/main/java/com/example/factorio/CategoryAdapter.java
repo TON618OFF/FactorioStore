@@ -15,9 +15,9 @@ import java.util.List;
 
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
 
-    private List<MainPage.Category> categories;
+    private List<Category> categories;
 
-    public CategoryAdapter(List<MainPage.Category> categories) {
+    public CategoryAdapter(List<Category> categories) {
         this.categories = categories;
     }
 
@@ -31,7 +31,7 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
 
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-        MainPage.Category category = categories.get(position);
+        Category category = categories.get(position);
         holder.categoryName.setText(category.name);
         Glide.with(holder.itemView.getContext())
                 .load(category.imageUrl)

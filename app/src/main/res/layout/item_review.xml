@@ -17,10 +17,10 @@
 
         <!-- Почта пользователя -->
         <TextView
-            android:id="@+id/review_user_email"
+            android:id="@+id/review_user_nickname"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="user@example.com"
+            android:text="example"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="@color/white"/>

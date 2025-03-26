@@ -39,18 +39,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
-</androidx.core.widget.NestedScrollView>
+    </androidx.core.widget.NestedScrollView>
 
     <!-- Фиксированная нижняя навигация -->
-<com.google.android.material.bottomnavigation.BottomNavigationView
-android:id="@+id/bottomNavigationView"
-android:layout_width="match_parent"
-android:layout_height="wrap_content"
-android:layout_gravity="bottom"
-android:paddingStart="0dp"
-android:paddingEnd="0dp"
-app:menu="@menu/bottom_nav_menu"
-android:background="@color/coal_black"
-app:itemTextColor="@color/copper_light"/>
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        app:menu="@menu/bottom_nav_menu"
+        android:background="@color/coal_black"
+        app:itemTextColor="@color/copper_light"/>
 
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

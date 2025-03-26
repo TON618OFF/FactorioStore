@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -21,60 +22,49 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputEditText passwordInput;
     private MaterialButton loginButton;
     private TextView registerLink;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        auth = FirebaseAuth.getInstance();
         initViews();
         setupListeners();
     }
 
     private void initViews() {
-        // Инициализация полей ввода
         emailLayout = findViewById(R.id.emailLayout);
         passwordLayout = findViewById(R.id.passwordLayout);
         emailInput = findViewById(R.id.emailInput);
         passwordInput = findViewById(R.id.passwordInput);
         loginButton = findViewById(R.id.loginButton);
         registerLink = findViewById(R.id.registerLink);
-
-        // Установка начального состояния
-        emailInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        passwordInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
     }
 
     private void setupListeners() {
-        // Кнопка входа
         loginButton.setOnClickListener(v -> attemptLogin());
-
-        // Ссылка регистрации
         registerLink.setOnClickListener(v -> navigateToRegister());
     }
 
     private void attemptLogin() {
-        // Сброс ошибок
         emailLayout.setError(null);
         passwordLayout.setError(null);
 
-        // Получение значений
         String email = emailInput.getText().toString().trim();
         String password = passwordInput.getText().toString().trim();
 
-        // Валидация
         if (!validateInput(email, password)) {
             return;
         }
 
-        // Попытка входа
         performLogin(email, password);
     }
 
     private boolean validateInput(String email, String password) {
         boolean isValid = true;
 
-        // Проверка email
         if (TextUtils.isEmpty(email)) {
             emailLayout.setError("Введите email");
             emailInput.requestFocus();
@@ -85,18 +75,13 @@ public class LoginActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        // Проверка пароля
         if (TextUtils.isEmpty(password)) {
             passwordLayout.setError("Введите пароль");
-            if (isValid) {
-                passwordInput.requestFocus();
-            }
+            if (isValid) passwordInput.requestFocus();
             isValid = false;
         } else if (password.length() < 6) {
             passwordLayout.setError("Минимум 6 символов");
-            if (isValid) {
-                passwordInput.requestFocus();
-            }
+            if (isValid) passwordInput.requestFocus();
             isValid = false;
         }
 
@@ -104,20 +89,21 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void performLogin(String email, String password) {
-        // Показываем прогресс
         loginButton.setEnabled(false);
         loginButton.setText("Выполняется вход...");
 
-        // TODO: Здесь будет реализация входа через Firebase Auth
-        // Пока имитируем задержку и успешный вход
-        loginButton.postDelayed(() -> {
-            // После успешного входа
-            navigateToMain();
-        }, 1500);
-    }
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    loginButton.setEnabled(true);
+                    loginButton.setText("Войти");
 
-    private void showForgotPasswordDialog() {
-        Toast.makeText(this, "Функция восстановления пароля в разработке", Toast.LENGTH_SHORT).show();
+                    if (task.isSuccessful()) {
+                        Toast.makeText(this, "Вход успешен", Toast.LENGTH_SHORT).show();
+                        navigateToMain();
+                    } else {
+                        Toast.makeText(this, "Ошибка входа: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void navigateToRegister() {
@@ -132,5 +118,4 @@ public class LoginActivity extends AppCompatActivity {
         startActivity(intent);
         finish();
     }
-
 }

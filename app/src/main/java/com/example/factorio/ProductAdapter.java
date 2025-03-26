@@ -1,5 +1,8 @@
 package com.example.factorio;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,22 +15,32 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
-
     private List<Product> products;
+    private Context context;
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
-    public ProductAdapter(List<Product> products) {
+    // Конструктор
+    public ProductAdapter(Context context, List<Product> products) {
+        this.context = context;
         this.products = products;
+        this.db = FirebaseFirestore.getInstance();
+        this.auth = FirebaseAuth.getInstance();
     }
 
     @NonNull
     @Override
     public ProductViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_product, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_product, parent, false);
         return new ProductViewHolder(view);
     }
 
@@ -35,31 +48,69 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
         Product product = products.get(position);
 
-        // Заполнение данных
-        holder.productName.setText(product.name);
-        holder.productDescription.setText(product.description);
-        holder.productPrice.setText(String.format("%d руб.", product.price));
-        Glide.with(holder.itemView.getContext())
-                .load(product.imageUrl)
+        holder.productName.setText(product.getName());
+        holder.productCategory.setText("Категория: " + product.getCategoryName());
+        holder.productDescription.setText(product.getDescription());
+        holder.productPrice.setText(String.format("%d руб.", product.getPrice()));
+        Glide.with(context)
+                .load(product.getImageUrl())
                 .placeholder(R.drawable.ic_placeholder)
                 .error(R.drawable.ic_placeholder)
                 .into(holder.productImage);
 
-        // Логика для "Избранного"
-        holder.favoriteIcon.setSelected(product.isFavorite); // Начальное состояние из модели
+        // Установка начального состояния иконки
+        holder.favoriteIcon.setImageResource(product.isFavorite() ? R.drawable.favorite_on : R.drawable.favorite);
+
         holder.favoriteIcon.setOnClickListener(v -> {
-            product.isFavorite = !product.isFavorite; // Переключаем состояние в модели
-            holder.favoriteIcon.setSelected(product.isFavorite);
-            String message = product.isFavorite ? "Добавлено в избранное" : "Удалено из избранного";
-            Toast.makeText(holder.itemView.getContext(), message, Toast.LENGTH_SHORT).show();
+            FirebaseUser user = auth.getCurrentUser();
+            if (user == null) {
+                Toast.makeText(context, "Войдите, чтобы добавить в избранное", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            product.setFavorite(!product.isFavorite());
+            holder.favoriteIcon.setImageResource(product.isFavorite() ? R.drawable.favorite_on : R.drawable.favorite);
+            String message = product.isFavorite() ? "Добавлено в избранное" : "Удалено из избранного";
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+
+            // Сохранение в Firestore
+            String userId = user.getUid();
+            if (product.isFavorite()) {
+                Map<String, Object> favoriteData = new HashMap<>();
+                favoriteData.put("productId", product.getId());
+                favoriteData.put("addedAt", System.currentTimeMillis());
+                db.collection("users").document(userId).collection("favorites").document(product.getId())
+                        .set(favoriteData)
+                        .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } else {
+                db.collection("users").document(userId).collection("favorites").document(product.getId())
+                        .delete()
+                        .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
         });
 
-        // Обработка нажатий на кнопки
-        holder.detailsButton.setOnClickListener(v ->
-                Toast.makeText(holder.itemView.getContext(), "Подробнее о " + product.name, Toast.LENGTH_SHORT).show());
+        holder.detailsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(context, ProductDetailsActivity.class);
+            intent.putExtra("productId", product.getId());
+            intent.putExtra("categoryName", product.getCategoryName());
+            if (context instanceof Activity) {
+                ((Activity) context).startActivityForResult(intent, 1); // Код запроса 1
+            } else {
+                context.startActivity(intent); // Fallback для случаев, если context не Activity
+            }
+        });
 
-        holder.buyButton.setOnClickListener(v ->
-                Toast.makeText(holder.itemView.getContext(), "Купить " + product.name, Toast.LENGTH_SHORT).show());
+        holder.buyButton.setOnClickListener(v -> {
+            CartItem cartItem = new CartItem(
+                    product.getId(),
+                    product.getName(),
+                    product.getPrice(),
+                    1, // Начальное количество
+                    product.getImageUrl()
+            );
+            CartManager.getInstance().addToCart(cartItem);
+            Toast.makeText(context, "Добавлено в корзину: " + product.getName(), Toast.LENGTH_SHORT).show();
+        });
     }
 
     @Override
@@ -67,37 +118,17 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         return products.size();
     }
 
-    // Модель данных для товара
-    public static class Product {
-        String name;
-        String description;
-        int price;
-        String imageUrl;
-        boolean isFavorite; // Добавлено поле для состояния "Избранное"
+    // ViewHolder
+    static class ProductViewHolder extends RecyclerView.ViewHolder {
+        ImageView productImage, favoriteIcon;
+        TextView productName, productCategory, productDescription, productPrice;
+        Button detailsButton, buyButton;
 
-        public Product(String name, String description, int price, String imageUrl) {
-            this.name = name;
-            this.description = description;
-            this.price = price;
-            this.imageUrl = imageUrl;
-            this.isFavorite = false; // По умолчанию не в избранном
-        }
-    }
-
-    // ViewHolder для карточки продукта
-    public static class ProductViewHolder extends RecyclerView.ViewHolder {
-        ImageView productImage;
-        TextView productName;
-        TextView productDescription;
-        TextView productPrice;
-        ImageView favoriteIcon;
-        Button detailsButton;
-        Button buyButton;
-
-        public ProductViewHolder(@NonNull View itemView) {
+        ProductViewHolder(@NonNull View itemView) {
             super(itemView);
             productImage = itemView.findViewById(R.id.product_image);
             productName = itemView.findViewById(R.id.product_name);
+            productCategory = itemView.findViewById(R.id.product_category);
             productDescription = itemView.findViewById(R.id.product_description);
             productPrice = itemView.findViewById(R.id.product_price);
             favoriteIcon = itemView.findViewById(R.id.favorite_icon);
