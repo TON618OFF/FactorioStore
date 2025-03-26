@@ -1,6 +1,7 @@
 package com.example.factorio;
 
-import android.content.Intent;
+import android.graphics.Paint;
+import android.graphics.pdf.PdfDocument;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,9 +22,21 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.Multipart;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 
 public class CartPageFragment extends Fragment {
 
@@ -106,60 +119,127 @@ public class CartPageFragment extends Fragment {
             return;
         }
 
-        // Подготовка данных заказа
         Map<String, Object> orderData = new HashMap<>();
         orderData.put("userId", user.getUid());
         orderData.put("email", email);
         orderData.put("timestamp", FieldValue.serverTimestamp());
-        orderData.put("items", items); // Список объектов CartItem
+        orderData.put("items", items);
         orderData.put("totalPrice", calculateTotalPrice(items));
 
-        // Сохранение заказа в Firestore
         db.collection("orders")
                 .add(orderData)
                 .addOnSuccessListener(documentReference -> {
                     String orderId = documentReference.getId();
                     Toast.makeText(getContext(), "Заказ оформлен! ID: " + orderId, Toast.LENGTH_SHORT).show();
 
-                    // Формирование чека для отправки (пока текст)
-                    StringBuilder receipt = new StringBuilder();
-                    receipt.append("Чек заказа #").append(orderId).append("\n");
-                    receipt.append("Email: ").append(email).append("\n");
-                    receipt.append("Дата: ").append(new java.util.Date().toString()).append("\n\n");
-                    receipt.append("Товары:\n");
-
-                    int totalPrice = 0;
-                    for (CartItem item : items) {
-                        receipt.append(item.getName())
-                                .append(" - ")
-                                .append(item.getQuantity())
-                                .append(" шт. x ")
-                                .append(item.getPrice())
-                                .append(" руб. = ")
-                                .append(item.getTotalPrice())
-                                .append(" руб.\n");
-                        totalPrice += item.getTotalPrice();
-                    }
-                    receipt.append("\nИтого: ").append(totalPrice).append(" руб.");
-
-                    // Отправка чека на почту
-                    Intent emailIntent = new Intent(Intent.ACTION_SEND);
-                    emailIntent.setType("message/rfc822");
-                    emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{email});
-                    emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Чек заказа Factorio #" + orderId);
-                    emailIntent.putExtra(Intent.EXTRA_TEXT, receipt.toString());
-
-                    try {
-                        startActivity(Intent.createChooser(emailIntent, "Отправить чек"));
-                        cartManager.removeAllFromCart(); // Очистка корзины
-                        updateUI();
-                    } catch (android.content.ActivityNotFoundException ex) {
-                        Toast.makeText(getContext(), "Нет приложений для отправки email", Toast.LENGTH_SHORT).show();
-                    }
+                    new Thread(() -> {
+                        try {
+                            File pdfFile = generatePdf(orderId, email, items);
+                            sendEmailWithPdf(email, orderId, pdfFile);
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
+                                cartManager.removeAllFromCart();
+                                updateUI();
+                            });
+                        } catch (Exception e) {
+                            getActivity().runOnUiThread(() ->
+                                    Toast.makeText(getContext(), "Ошибка: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                        }
+                    }).start();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(getContext(), "Ошибка при оформлении заказа: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private File generatePdf(String orderId, String email, List<CartItem> items) throws Exception {
+        File pdfFile = new File(getContext().getCacheDir(), "receipt_" + orderId + ".pdf");
+        PdfDocument pdfDocument = new PdfDocument();
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create(); // A4 размер в точках (595x842)
+        PdfDocument.Page page = pdfDocument.startPage(pageInfo);
+        android.graphics.Canvas canvas = page.getCanvas();
+        Paint paint = new Paint();
+        paint.setTextSize(16);
+        paint.setFakeBoldText(true);
+
+        int yPosition = 40; // Начальная позиция по Y
+
+        // Заголовок
+        canvas.drawText("Чек заказа", 280, yPosition, paint); // Центрируем по X (595 / 2)
+        paint.setFakeBoldText(false);
+        paint.setTextSize(12);
+        yPosition += 20;
+
+        canvas.drawText("Заказ #" + orderId, 20, yPosition, paint);
+        yPosition += 20;
+        canvas.drawText("Дата: " + new java.util.Date().toString(), 20, yPosition, paint);
+        yPosition += 20;
+        canvas.drawText("Пользователь: " + email, 20, yPosition, paint);
+        yPosition += 30;
+
+        // Заголовки таблицы
+        canvas.drawText("Товар", 20, yPosition, paint);
+        canvas.drawText("Кол-во", 300, yPosition, paint);
+        canvas.drawText("Цена", 400, yPosition, paint);
+        canvas.drawText("Сумма", 500, yPosition, paint);
+        yPosition += 10;
+        canvas.drawLine(20, yPosition, 575, yPosition, paint); // Линия под заголовками
+        yPosition += 20;
+
+        // Товары
+        for (CartItem item : items) {
+            canvas.drawText(item.getName(), 20, yPosition, paint);
+            canvas.drawText(String.valueOf(item.getQuantity()), 300, yPosition, paint);
+            canvas.drawText(item.getPrice() + " руб.", 400, yPosition, paint);
+            canvas.drawText(item.getTotalPrice() + " руб.", 500, yPosition, paint);
+            yPosition += 20;
+        }
+
+        yPosition += 10;
+        canvas.drawLine(20, yPosition, 575, yPosition, paint); // Линия перед итогом
+        yPosition += 20;
+
+        // Итог
+        canvas.drawText("Итого: " + calculateTotalPrice(items) + " руб.", 500, yPosition, paint);
+
+        pdfDocument.finishPage(page);
+        pdfDocument.writeTo(new FileOutputStream(pdfFile));
+        pdfDocument.close();
+
+        return pdfFile;
+    }
+
+    private void sendEmailWithPdf(String email, String orderId, File pdfFile) throws Exception {
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+
+        Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+            protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
+                return new javax.mail.PasswordAuthentication("factoriostore@gmail.com", "vzmn oowl dvmq dhel");
+            }
+        });
+
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress("factoriostore@gmail.com"));
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
+        message.setSubject("Ваш чек заказа Factorio #" + orderId);
+
+        MimeBodyPart textPart = new MimeBodyPart();
+        textPart.setText("Спасибо за заказ! Чек во вложении.");
+
+        MimeBodyPart attachmentPart = new MimeBodyPart();
+        attachmentPart.attachFile(pdfFile);
+
+        Multipart multipart = new MimeMultipart();
+        multipart.addBodyPart(textPart);
+        multipart.addBodyPart(attachmentPart);
+
+        message.setContent(multipart);
+
+        Transport.send(message);
     }
 
     private int calculateTotalPrice(List<CartItem> items) {
