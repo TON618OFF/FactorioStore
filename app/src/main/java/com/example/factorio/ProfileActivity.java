@@ -18,8 +18,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class ProfileActivity extends AppCompatActivity {
 
     private TextInputEditText emailText, nicknameText, birthDateText, addressText, passwordText;
-    private TextInputLayout passwordLayout, addressLayout; // Добавляем addressLayout
-    private MaterialButton logoutButton;
+    private TextInputLayout passwordLayout, addressLayout;
+    private MaterialButton logoutButton, favoritesButton; // Добавляем кнопку "Избранное"
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
@@ -44,14 +44,16 @@ public class ProfileActivity extends AppCompatActivity {
         addressText = findViewById(R.id.address_text);
         passwordText = findViewById(R.id.password_text);
         passwordLayout = findViewById(R.id.password_layout);
-        addressLayout = findViewById(R.id.address_layout); // Инициализируем addressLayout
+        addressLayout = findViewById(R.id.address_layout);
         logoutButton = findViewById(R.id.logout_button);
+        favoritesButton = findViewById(R.id.favorites_button); // Инициализируем кнопку "Избранное"
     }
 
     private void setupListeners() {
         passwordLayout.setEndIconOnClickListener(v -> showChangePasswordDialog());
-        addressLayout.setEndIconOnClickListener(v -> showChangeAddressDialog()); // Добавляем слушатель для адреса
+        addressLayout.setEndIconOnClickListener(v -> showChangeAddressDialog());
         logoutButton.setOnClickListener(v -> logout());
+        favoritesButton.setOnClickListener(v -> goToFavorites()); // Добавляем обработчик для "Избранное"
     }
 
     private void loadUserProfile() {
@@ -131,7 +133,6 @@ public class ProfileActivity extends AppCompatActivity {
         TextInputEditText newAddressInput = dialogView.findViewById(R.id.new_address_input);
         MaterialButton saveAddressButton = dialogView.findViewById(R.id.save_address_button);
 
-        // Предзаполняем текущий адрес
         newAddressInput.setText(addressText.getText().toString());
 
         AlertDialog dialog = builder.create();
@@ -155,7 +156,7 @@ public class ProfileActivity extends AppCompatActivity {
                 db.collection("users").document(userId)
                         .update("address", newAddress)
                         .addOnSuccessListener(aVoid -> {
-                            addressText.setText(newAddress); // Обновляем UI
+                            addressText.setText(newAddress);
                             Toast.makeText(this, "Адрес изменён", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                         })
@@ -173,5 +174,10 @@ public class ProfileActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void goToFavorites() {
+        Intent intent = new Intent(this, FavoritesActivity.class);
+        startActivity(intent);
     }
 }

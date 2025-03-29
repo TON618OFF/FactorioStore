@@ -15,23 +15,33 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class MainPage extends Fragment {
 
+    private static final int FILTER_SORT_REQUEST = 2;
+
     private RecyclerView productsRecyclerView;
     private ProductAdapter productAdapter;
     private FirebaseFirestore db;
     private List<Product> productsList;
+    private List<Product> filteredList;
     private Map<String, String> categoryNames;
+    private String currentQuery = "";
+    private boolean inStockFilter = false; // Фильтр "В наличии"
+    private String priceSort = "none"; // "asc", "desc", "none"
+    private String quantitySort = "none"; // "asc", "desc", "none"
 
     @Nullable
     @Override
@@ -45,11 +55,14 @@ public class MainPage extends Fragment {
         productsRecyclerView = view.findViewById(R.id.products_recycler_view);
         productsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         productsList = new ArrayList<>();
-        productAdapter = new ProductAdapter(getContext(), productsList);
+        filteredList = new ArrayList<>();
+        productAdapter = new ProductAdapter(getContext(), filteredList);
         productsRecyclerView.setAdapter(productAdapter);
 
+        MaterialButton filterButton = view.findViewById(R.id.filter_button);
+        filterButton.setOnClickListener(v -> openFilterSortActivity());
+
         loadCategories();
-        loadProductsFromFirestore();
 
         return view;
     }
@@ -66,7 +79,12 @@ public class MainPage extends Fragment {
                     break;
                 }
             }
-            productAdapter.notifyDataSetChanged();
+            applyFiltersAndSort();
+        } else if (requestCode == FILTER_SORT_REQUEST && resultCode == RESULT_OK && data != null) {
+            inStockFilter = data.getBooleanExtra("inStock", false);
+            priceSort = data.getStringExtra("priceSort");
+            quantitySort = data.getStringExtra("quantitySort");
+            applyFiltersAndSort();
         }
     }
 
@@ -74,6 +92,14 @@ public class MainPage extends Fragment {
     public void onResume() {
         super.onResume();
         loadProductsFromFirestore();
+    }
+
+    private void openFilterSortActivity() {
+        Intent intent = new Intent(getActivity(), FilterSortActivity.class);
+        intent.putExtra("inStock", inStockFilter);
+        intent.putExtra("priceSort", priceSort);
+        intent.putExtra("quantitySort", quantitySort);
+        startActivityForResult(intent, FILTER_SORT_REQUEST);
     }
 
     private void loadCategories() {
@@ -98,27 +124,7 @@ public class MainPage extends Fragment {
     private void loadProductsFromFirestore() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            db.collection("products")
-                    .get()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            productsList.clear();
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                String name = document.getString("name");
-                                String description = document.getString("description");
-                                Long priceLong = document.getLong("price");
-                                String imageUrl = document.getString("imageUrl");
-                                String categoryId = document.getString("category");
-                                int quantity = document.getLong("quantity").intValue(); // Загружаем quantity
-                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                    int price = priceLong.intValue();
-                                    String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
-                                    productsList.add(new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity));
-                                }
-                            }
-                            productAdapter.notifyDataSetChanged();
-                        }
-                    });
+            fetchProducts(new ArrayList<>());
             return;
         }
 
@@ -126,78 +132,99 @@ public class MainPage extends Fragment {
         db.collection("users").document(userId).collection("favorites")
                 .addSnapshotListener((favoritesSnapshot, e) -> {
                     if (e != null) {
-                        Toast.makeText(getContext(), "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Ошибка загрузки избранного: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
                     List<String> favoriteIds = new ArrayList<>();
                     if (favoritesSnapshot != null) {
                         for (QueryDocumentSnapshot doc : favoritesSnapshot) {
-                            favoriteIds.add(doc.getString("productId"));
+                            String productId = doc.getString("productId");
+                            if (productId != null) {
+                                favoriteIds.add(productId);
+                            }
                         }
                     }
-
-                    db.collection("products")
-                            .addSnapshotListener((productsSnapshot, error) -> {
-                                if (error != null) {
-                                    Toast.makeText(getContext(), "Ошибка: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-
-                                if (productsSnapshot != null) {
-                                    productsList.clear();
-                                    for (QueryDocumentSnapshot document : productsSnapshot) {
-                                        String name = document.getString("name");
-                                        String description = document.getString("description");
-                                        Long priceLong = document.getLong("price");
-                                        String imageUrl = document.getString("imageUrl");
-                                        String categoryId = document.getString("category");
-                                        int quantity = document.getLong("quantity").intValue(); // Загружаем quantity
-                                        if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                            int price = priceLong.intValue();
-                                            String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
-                                            boolean isFavorite = favoriteIds.contains(document.getId());
-                                            Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity);
-                                            product.setFavorite(isFavorite);
-                                            productsList.add(product);
-                                        }
-                                    }
-                                    productAdapter.notifyDataSetChanged();
-                                }
-                            });
+                    fetchProducts(favoriteIds);
                 });
     }
 
-    public void searchProducts(String query) {
-        if (query.isEmpty()) {
-            loadProductsFromFirestore();
-            return;
-        }
-
+    private void fetchProducts(List<String> favoriteIds) {
         db.collection("products")
-                .whereGreaterThanOrEqualTo("name", query)
-                .whereLessThanOrEqualTo("name", query + "\uf8ff")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
+                .addSnapshotListener((productsSnapshot, error) -> {
+                    if (error != null) {
+                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (productsSnapshot != null) {
                         productsList.clear();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
+                        filteredList.clear();
+                        for (QueryDocumentSnapshot document : productsSnapshot) {
                             String name = document.getString("name");
                             String description = document.getString("description");
                             Long priceLong = document.getLong("price");
                             String imageUrl = document.getString("imageUrl");
                             String categoryId = document.getString("category");
-                            int quantity = document.getLong("quantity").intValue(); // Загружаем quantity
+                            Integer quantity = document.getLong("quantity").intValue();
                             if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
                                 int price = priceLong.intValue();
                                 String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
-                                productsList.add(new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity));
+                                boolean isFavorite = favoriteIds.contains(document.getId());
+                                Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity);
+                                product.setFavorite(isFavorite);
+                                productsList.add(product);
                             }
                         }
-                        productAdapter.notifyDataSetChanged();
-                    } else {
-                        Toast.makeText(getContext(), "Ошибка поиска: " + task.getException(), Toast.LENGTH_SHORT).show();
+                        applyFiltersAndSort();
                     }
                 });
+    }
+
+    public void searchProducts(String query) {
+        currentQuery = query;
+        applyFiltersAndSort();
+    }
+
+    private void applyFiltersAndSort() {
+        filteredList.clear();
+        String lowerQuery = currentQuery.trim().toLowerCase();
+
+        // Фильтрация
+        for (Product product : productsList) {
+            boolean matchesQuery = lowerQuery.isEmpty();
+            if (!lowerQuery.isEmpty()) {
+                String lowerName = product.getName().toLowerCase();
+                String[] words = lowerName.split("\\s+");
+                for (String word : words) {
+                    if (word.startsWith(lowerQuery)) {
+                        matchesQuery = true;
+                        break;
+                    }
+                }
+            }
+
+            boolean matchesStock = !inStockFilter || product.getQuantity() > 0;
+
+            if (matchesQuery && matchesStock) {
+                filteredList.add(product);
+            }
+        }
+
+        // Сортировка по цене
+        if ("asc".equals(priceSort)) {
+            Collections.sort(filteredList, Comparator.comparingInt(Product::getPrice));
+        } else if ("desc".equals(priceSort)) {
+            Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getPrice(), p1.getPrice()));
+        }
+
+        // Сортировка по количеству (приоритет ниже, чем по цене)
+        if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+            Collections.sort(filteredList, Comparator.comparingInt(Product::getQuantity));
+        } else if ("desc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+            Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getQuantity(), p1.getQuantity()));
+        }
+
+        productAdapter.notifyDataSetChanged();
     }
 }

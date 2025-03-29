@@ -36,7 +36,7 @@
                 android:id="@+id/review_star"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:src="@drawable/rating_star"
+                android:src="@drawable/review_star_filled"
                 android:contentDescription="Звёздочка рейтинга"/>
 
             <TextView

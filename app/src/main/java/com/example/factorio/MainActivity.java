@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private MainPage mainPageFragment;
     private CategoriesPage categoriesPage;
     private CartPageFragment cartPageFragment;
-    private View headerLayout; // Добавляем ссылку на header_layout
+    private View headerLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,31 +30,26 @@ public class MainActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // Проверка авторизации
         if (auth.getCurrentUser() == null) {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
 
-        // Инициализация компонентов
         FloatingActionButton favoriteFab = findViewById(R.id.favorite_fab);
         bottomNavigation = findViewById(R.id.bottomNavigationView);
-        headerLayout = findViewById(R.id.header); // Получаем header_layout
+        headerLayout = findViewById(R.id.header);
 
-        // Инициализация фрагментов
         mainPageFragment = new MainPage();
         cartPageFragment = new CartPageFragment();
         categoriesPage = new CategoriesPage();
 
-        // Показываем MainPage по умолчанию
         if (savedInstanceState == null) {
             showFragment(mainPageFragment);
         }
 
-        // Настройка поиска из header.xml
-        TextInputEditText searchInput = findViewById(R.id.header)
-                .findViewById(R.id.search_input_edit_text);
+        // Оптимизированный поиск
+        TextInputEditText searchInput = headerLayout.findViewById(R.id.search_input_edit_text);
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -64,17 +59,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                String query = s.toString().trim();
-                mainPageFragment.searchProducts(query); // Передаём запрос в MainPage
+                mainPageFragment.searchProducts(s.toString().trim().toLowerCase());
             }
         });
 
-        // Переход в FavoritesActivity через FAB
-        favoriteFab.setOnClickListener(v -> {
-            startActivity(new Intent(MainActivity.this, FavoritesActivity.class));
-        });
+        favoriteFab.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, FavoritesActivity.class)));
 
-        // Обработка переключения фрагментов
         bottomNavigation.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.home) {
@@ -87,17 +77,11 @@ public class MainActivity extends AppCompatActivity {
                 showFragment(cartPageFragment);
                 return true;
             } else if (itemId == R.id.profile) {
-                if (auth.getCurrentUser() != null) {
-                    Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
-                    startActivity(intent);
-                    return true;
-                } else {
-                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
-                    return false;
-                }
-            } else {
-                return false;
+                Intent intent = new Intent(MainActivity.this, auth.getCurrentUser() != null ? ProfileActivity.class : LoginActivity.class);
+                startActivity(intent);
+                return true;
             }
+            return false;
         });
     }
 
@@ -106,12 +90,7 @@ public class MainActivity extends AppCompatActivity {
                 .beginTransaction()
                 .replace(R.id.content_fragment, fragment)
                 .commit();
-
-        // Управление видимостью headerLayout
-        if (fragment instanceof MainPage) {
-            headerLayout.setVisibility(View.VISIBLE);
-        } else {
-            headerLayout.setVisibility(View.GONE);
-        }
+        headerLayout.setVisibility(fragment instanceof MainPage ? View.VISIBLE : View.GONE);
     }
 }
+
