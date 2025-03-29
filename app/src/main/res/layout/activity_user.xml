@@ -55,6 +55,9 @@
         android:hint="Никнейм"
         android:textColorHint="@color/smoke_white"
         app:boxStrokeColor="@color/oil_teal"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/edit_pen"
+        app:endIconTint="@color/white"
         app:layout_constraintTop_toBottomOf="@id/email_layout"
         app:layout_constraintStart_toStartOf="parent">
 
@@ -66,7 +69,7 @@
             android:textColor="@color/white"
             android:inputType="text"
             android:enabled="false"
-            android:backgroundTint="@color/coal_gray"/>
+            android:backgroundTint="@color/coal_gray" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Поле Дата рождения -->

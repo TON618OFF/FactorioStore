@@ -1,9 +1,11 @@
 package com.example.factorio;
 
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.DatePicker;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,13 +17,20 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
 public class ProfileActivity extends AppCompatActivity {
 
     private TextInputEditText emailText, nicknameText, birthDateText, addressText, passwordText;
-    private TextInputLayout passwordLayout, addressLayout;
-    private MaterialButton logoutButton, favoritesButton; // Добавляем кнопку "Избранное"
+    private TextInputLayout passwordLayout, addressLayout, birthDateLayout, nicknameLayout;
+    private MaterialButton logoutButton, favoritesButton;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private Calendar calendar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +42,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        calendar = Calendar.getInstance();
 
         loadUserProfile();
     }
@@ -45,15 +55,19 @@ public class ProfileActivity extends AppCompatActivity {
         passwordText = findViewById(R.id.password_text);
         passwordLayout = findViewById(R.id.password_layout);
         addressLayout = findViewById(R.id.address_layout);
+        birthDateLayout = findViewById(R.id.birth_date_layout);
+        nicknameLayout = findViewById(R.id.nickname_layout);
         logoutButton = findViewById(R.id.logout_button);
-        favoritesButton = findViewById(R.id.favorites_button); // Инициализируем кнопку "Избранное"
+        favoritesButton = findViewById(R.id.favorites_button);
     }
 
     private void setupListeners() {
         passwordLayout.setEndIconOnClickListener(v -> showChangePasswordDialog());
         addressLayout.setEndIconOnClickListener(v -> showChangeAddressDialog());
+        birthDateLayout.setEndIconOnClickListener(v -> showDatePickerDialog());
+        nicknameLayout.setEndIconOnClickListener(v -> showChangeNicknameDialog());
         logoutButton.setOnClickListener(v -> logout());
-        favoritesButton.setOnClickListener(v -> goToFavorites()); // Добавляем обработчик для "Избранное"
+        favoritesButton.setOnClickListener(v -> goToFavorites());
     }
 
     private void loadUserProfile() {
@@ -73,6 +87,101 @@ public class ProfileActivity extends AppCompatActivity {
                     })
                     .addOnFailureListener(e -> Toast.makeText(this, "Ошибка загрузки профиля: " + e.getMessage(), Toast.LENGTH_SHORT).show());
         }
+    }
+
+    private void showDatePickerDialog() {
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+                this,
+                (view, year, month, dayOfMonth) -> {
+                    calendar.set(Calendar.YEAR, year);
+                    calendar.set(Calendar.MONTH, month);
+                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                    updateBirthDate();
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+        );
+        datePickerDialog.show();
+    }
+
+    private void updateBirthDate() {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+        String newBirthDate = sdf.format(calendar.getTime());
+
+        FirebaseUser user = auth.getCurrentUser();
+        if (user != null) {
+            String userId = user.getUid();
+            db.collection("users").document(userId)
+                    .update("birthday", newBirthDate)
+                    .addOnSuccessListener(aVoid -> {
+                        birthDateText.setText(newBirthDate);
+                        Toast.makeText(this, "Дата рождения обновлена", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка обновления даты: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        }
+    }
+
+    private void showChangeNicknameDialog() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        String userId = user.getUid();
+        db.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener(document -> {
+                    Long lastChangeTimestamp = document.getLong("lastNicknameChange");
+                    long currentTime = System.currentTimeMillis();
+                    long oneDayInMillis = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+
+                    if (lastChangeTimestamp != null && (currentTime - lastChangeTimestamp < oneDayInMillis)) {
+                        long timeLeft = oneDayInMillis - (currentTime - lastChangeTimestamp);
+                        int hoursLeft = (int) (timeLeft / (60 * 60 * 1000));
+                        int minutesLeft = (int) ((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
+                        Toast.makeText(this, "Изменение никнейма доступно через " + hoursLeft + " ч " + minutesLeft + " мин", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    View dialogView = getLayoutInflater().inflate(R.layout.dialog_change_nickname, null);
+                    builder.setView(dialogView);
+
+                    TextInputEditText newNicknameInput = dialogView.findViewById(R.id.new_nickname_input);
+                    MaterialButton saveNicknameButton = dialogView.findViewById(R.id.save_nickname_button);
+
+                    newNicknameInput.setText(nicknameText.getText().toString());
+
+                    AlertDialog dialog = builder.create();
+
+                    saveNicknameButton.setOnClickListener(v -> {
+                        String newNickname = newNicknameInput.getText().toString().trim();
+
+                        if (newNickname.isEmpty()) {
+                            Toast.makeText(this, "Введите никнейм", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        if (newNickname.length() < 3) {
+                            Toast.makeText(this, "Никнейм должен содержать минимум 3 символа", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        Map<String, Object> updates = new HashMap<>();
+                        updates.put("nickname", newNickname);
+                        updates.put("lastNicknameChange", System.currentTimeMillis());
+
+                        db.collection("users").document(userId)
+                                .update(updates)
+                                .addOnSuccessListener(aVoid -> {
+                                    nicknameText.setText(newNickname);
+                                    Toast.makeText(this, "Никнейм изменён", Toast.LENGTH_SHORT).show();
+                                    dialog.dismiss();
+                                })
+                                .addOnFailureListener(e -> Toast.makeText(this, "Ошибка изменения никнейма: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    });
+
+                    dialog.show();
+                });
     }
 
     private void showChangePasswordDialog() {

@@ -211,18 +211,21 @@ public class MainPage extends Fragment {
             }
         }
 
-        // Сортировка по цене
+        // Сортировка по цене (если выбрана)
         if ("asc".equals(priceSort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getPrice));
         } else if ("desc".equals(priceSort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getPrice(), p1.getPrice()));
         }
-
-        // Сортировка по количеству (приоритет ниже, чем по цене)
-        if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+        // Сортировка по количеству (если выбрана и нет сортировки по цене)
+        else if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getQuantity));
         } else if ("desc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getQuantity(), p1.getQuantity()));
+        }
+        // Если нет сортировки, рандомизируем список
+        else {
+            Collections.shuffle(filteredList);
         }
 
         productAdapter.notifyDataSetChanged();
