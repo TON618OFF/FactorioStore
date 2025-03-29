@@ -1,69 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/coal_black"
-    android:padding="16dp">
+    android:background="@color/coal_black">
 
-    <!-- Количество товаров -->
+    <!-- Полупрозрачный фон для заголовка, как в CheckoutActivity -->
+    <RelativeLayout
+        android:id="@+id/title_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#80000000"
+        android:elevation="4dp"
+        android:padding="16dp">
+
     <TextView
         android:id="@+id/cart_items_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Товаров в корзине: 0"
-        android:textColor="@color/steel_gray"
-        android:textSize="14sp"/>
-
-    <!-- RecyclerView для товаров -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/cart_recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="8dp"
-        tools:listitem="@layout/item_cart"/>
-
-    <!-- Общая цена -->
-    <TextView
-        android:id="@+id/cart_total_price"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Общая цена: 0 руб."
-        android:textColor="@android:color/white"
+        android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:layout_marginTop="16dp"/>
+        android:shadowColor="@android:color/black"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:shadowRadius="4"
+        android:layout_centerVertical="true"/>
+
+</RelativeLayout>
+
+    <!-- RecyclerView для товаров -->
+<androidx.recyclerview.widget.RecyclerView
+    android:id="@+id/cart_recycler_view"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:layout_marginTop="8dp"
+    android:padding="12dp"
+    android:clipToPadding="false"
+    android:background="@android:color/transparent"
+    tools:listitem="@layout/item_cart"/>
+
+    <!-- Нижний блок с ценой и кнопками -->
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginBottom="16dp"
+    android:padding="16dp">
+
+    <!-- Общая цена -->
+<RelativeLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content">
+
+<TextView
+    android:id="@+id/total_label_text"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Итого"
+    android:textColor="@color/white"
+    android:textSize="16sp"/>
+
+<TextView
+    android:id="@+id/cart_total_price"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_alignParentEnd="true"
+    android:text="0 руб."
+    android:textColor="@color/white"
+    android:textSize="18sp"
+    android:textStyle="bold" />
+</RelativeLayout>
 
     <!-- Кнопки -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="16dp">
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="horizontal"
+android:layout_marginTop="16dp">
 
-        <!-- Кнопка удаления всех товаров -->
-        <ImageButton
-            android:id="@+id/clear_cart_button"
-            android:layout_width="0dp"
-            android:layout_weight="0.4"
-            android:layout_height="48dp"
-            android:background="@drawable/round_red_button"
-            android:src="@drawable/trash"
-            android:contentDescription="Удалить всё"
-            android:scaleType="centerInside"
-            android:layout_marginEnd="8dp"/>
+<!-- Кнопка удаления всех товаров -->
+<ImageButton
+    android:id="@+id/clear_cart_button"
+    android:layout_width="0dp"
+    android:layout_weight="0.4"
+    android:layout_height="wrap_content"
+    android:background="@drawable/round_red_button"
+    android:src="@drawable/trash"
+    android:contentDescription="Удалить всё"
+    android:scaleType="centerInside"
+    android:layout_marginEnd="8dp"/>
 
-        <!-- Кнопка оформления заказа -->
-        <Button
-            android:id="@+id/checkout_button"
-            android:layout_width="0dp"
-            android:layout_weight="2"
-            android:layout_height="48dp"
-            android:text="Оформить заказ"
-            android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_green_dark"
-            android:textSize="16sp"/>
-    </LinearLayout>
+<!-- Кнопка оформления заказа -->
+<Button
+    android:id="@+id/checkout_button"
+    android:layout_width="0dp"
+    android:layout_weight="2.4"
+    android:layout_height="wrap_content"
+    android:text="Оформить заказ"
+    android:textColor="@android:color/white"
+    android:backgroundTint="@color/circuit_green"
+    android:textSize="16sp"
+    android:textAllCaps="false"/>
 </LinearLayout>
+    </LinearLayout>
+
+    </LinearLayout>

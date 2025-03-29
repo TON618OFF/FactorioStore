@@ -53,6 +53,15 @@
             android:textColor="@color/steel_gray"
             android:layout_marginTop="8dp"/>
 
+        <TextView
+            android:id="@+id/detail_quantity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="В наличии: "
+            android:textSize="16sp"
+            android:textColor="@color/steel_gray"
+            android:layout_marginTop="8dp"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

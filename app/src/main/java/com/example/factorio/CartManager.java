@@ -32,16 +32,36 @@ public class CartManager {
         String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
         if (userId == null) return;
 
-        // Проверяем, есть ли товар уже в корзине
-        for (CartItem cartItem : cartItems) {
-            if (cartItem.getProductId().equals(item.getProductId())) {
-                cartItem.setQuantity(cartItem.getQuantity() + item.getQuantity());
-                updateFirestore(userId, cartItem);
-                return;
-            }
-        }
-        cartItems.add(item);
-        updateFirestore(userId, item);
+        db.collection("products").document(item.getProductId())
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        int availableQuantity = document.getLong("quantity").intValue();
+                        int requestedQuantity = item.getQuantity();
+
+                        for (CartItem cartItem : cartItems) {
+                            if (cartItem.getProductId().equals(item.getProductId())) {
+                                requestedQuantity += cartItem.getQuantity();
+                            }
+                        }
+
+                        if (availableQuantity >= requestedQuantity) {
+                            for (CartItem cartItem : cartItems) {
+                                if (cartItem.getProductId().equals(item.getProductId())) {
+                                    cartItem.setQuantity(cartItem.getQuantity() + item.getQuantity());
+                                    updateFirestore(userId, cartItem);
+                                    return;
+                                }
+                            }
+                            cartItems.add(item);
+                            updateFirestore(userId, item);
+                            // Опционально: уменьшаем количество в наличии
+                            // db.collection("products").document(item.getProductId()).update("quantity", availableQuantity - item.getQuantity());
+                        } else {
+                            // Сообщение об ошибке можно передать через callback, если нужен
+                        }
+                    }
+                });
     }
 
     public void removeAllFromCart() {
@@ -61,18 +81,27 @@ public class CartManager {
         String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : null;
         if (userId == null) return;
 
-        for (CartItem item : cartItems) {
-            if (item.getProductId().equals(productId)) {
-                if (newQuantity <= 0) {
-                    cartItems.remove(item);
-                    db.collection("users").document(userId).collection("cart").document(productId).delete();
-                } else {
-                    item.setQuantity(newQuantity);
-                    updateFirestore(userId, item);
-                }
-                break;
-            }
-        }
+        db.collection("products").document(productId)
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        int availableQuantity = document.getLong("quantity").intValue();
+                        if (newQuantity <= availableQuantity) {
+                            for (CartItem item : cartItems) {
+                                if (item.getProductId().equals(productId)) {
+                                    if (newQuantity <= 0) {
+                                        cartItems.remove(item);
+                                        db.collection("users").document(userId).collection("cart").document(productId).delete();
+                                    } else {
+                                        item.setQuantity(newQuantity);
+                                        updateFirestore(userId, item);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                });
     }
 
     private void updateFirestore(String userId, CartItem item) {

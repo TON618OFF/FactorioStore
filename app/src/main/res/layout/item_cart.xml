@@ -68,23 +68,21 @@
                 android:gravity="end"
                 android:layout_marginTop="10dp">
 
-                <!-- Кнопка уменьшения -->
-                <Button
+                <ImageView
                     android:id="@+id/decrease_quantity_button"
                     android:layout_width="36dp"
                     android:layout_height="36dp"
-                    android:text="-"
-                    android:textSize="10sp"
-                    android:textColor="@color/light_steel"
-                    android:background="@android:color/transparent"
-                    android:gravity="center"
-                    android:layout_marginEnd="8dp"/>
+                    android:src="@drawable/product_minus"
+                    android:clickable="true"
+                    android:layout_marginEnd="8dp"
+                    android:gravity="center"/>
 
                 <!-- Количество -->
                 <TextView
                     android:id="@+id/cart_item_quantity"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
                     android:text="1"
                     android:textColor="@color/light_steel"
                     android:textSize="16sp"
@@ -92,17 +90,14 @@
                     android:paddingHorizontal="12dp"
                     android:paddingVertical="4dp"/>
 
-                <!-- Кнопка увеличения -->
-                <Button
+                <ImageView
                     android:id="@+id/increase_quantity_button"
                     android:layout_width="36dp"
                     android:layout_height="36dp"
-                    android:text="+"
-                    android:textSize="10sp"
-                    android:textColor="@color/light_steel"
-                    android:background="@android:color/transparent"
-                    android:gravity="center"
-                    android:layout_marginStart="8dp"/>
+                    android:src="@drawable/product_plus"
+                    android:clickable="true"
+                    android:layout_marginStart="8dp"
+                    android:gravity="center"/>
 
                 <!-- Кнопка удаления -->
                 <ImageButton

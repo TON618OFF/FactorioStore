@@ -1,27 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/coal_black"
-    android:padding="16dp">
+    android:padding="8dp"
+    tools:context=".FavoritesActivity">
 
+    <!-- Заголовок -->
     <TextView
         android:id="@+id/favorites_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Избранное"
+        android:paddingStart="15dp"
+        android:paddingTop="15dp"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="@color/white"/>
+        android:textColor="@color/white"
+        android:layout_alignParentTop="true"/>
 
+    <!-- RecyclerView для списка избранного -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/favorites_recycler_view"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
+        android:layout_below="@id/favorites_title"
         android:layout_marginTop="16dp"
         android:nestedScrollingEnabled="false"
         tools:listitem="@layout/item_product"/>
-</LinearLayout>
+
+    <!-- Текст "Список избранного пуст" -->
+    <TextView
+        android:id="@+id/empty_favorites_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="В списке избранного 😴 — пусто!"
+        android:textSize="18sp"
+        android:textColor="@color/steel_gray"
+        android:layout_centerInParent="true"
+        android:visibility="gone"/>
+
+</RelativeLayout>

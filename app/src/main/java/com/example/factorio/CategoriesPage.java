@@ -1,5 +1,6 @@
 package com.example.factorio;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -57,10 +58,11 @@ public class CategoriesPage extends Fragment {
                     if (task.isSuccessful()) {
                         categoriesList.clear(); // Очищаем список перед загрузкой
                         for (QueryDocumentSnapshot document : task.getResult()) {
+                            String id = document.getId(); // Получаем ID документа
                             String name = document.getString("name");
                             String imageUrl = document.getString("imageUrl");
                             if (name != null && imageUrl != null) {
-                                categoriesList.add(new Category(name, imageUrl));
+                                categoriesList.add(new Category(id, name, imageUrl));
                             }
                         }
                         // Сортировка по ID документа (0, 1, 2, 3, 4)
@@ -76,58 +78,5 @@ public class CategoriesPage extends Fragment {
                 });
     }
 
-    // Модель для категории
-    public static class Category {
-        String name;
-        String imageUrl;
 
-        public Category(String name, String imageUrl) {
-            this.name = name;
-            this.imageUrl = imageUrl;
-        }
-    }
-
-    // Адаптер для категорий
-    private static class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
-        private List<Category> categories;
-
-        public CategoryAdapter(List<Category> categories) {
-            this.categories = categories;
-        }
-
-        @NonNull
-        @Override
-        public CategoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_category, parent, false);
-            return new CategoryViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-            Category category = categories.get(position);
-            holder.categoryName.setText(category.name);
-            Glide.with(holder.itemView.getContext())
-                    .load(category.imageUrl)
-                    .placeholder(R.drawable.ic_placeholder)
-                    .error(R.drawable.ic_placeholder)
-                    .into(holder.categoryImage);
-        }
-
-        @Override
-        public int getItemCount() {
-            return categories.size();
-        }
-
-        static class CategoryViewHolder extends RecyclerView.ViewHolder {
-            ImageView categoryImage;
-            TextView categoryName;
-
-            public CategoryViewHolder(@NonNull View itemView) {
-                super(itemView);
-                categoryImage = itemView.findViewById(R.id.category_image);
-                categoryName = itemView.findViewById(R.id.category_name);
-            }
-        }
-    }
 }

@@ -18,7 +18,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class ProfileActivity extends AppCompatActivity {
 
     private TextInputEditText emailText, nicknameText, birthDateText, addressText, passwordText;
-    private TextInputLayout passwordLayout;
+    private TextInputLayout passwordLayout, addressLayout; // Добавляем addressLayout
     private MaterialButton logoutButton;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
@@ -44,11 +44,13 @@ public class ProfileActivity extends AppCompatActivity {
         addressText = findViewById(R.id.address_text);
         passwordText = findViewById(R.id.password_text);
         passwordLayout = findViewById(R.id.password_layout);
+        addressLayout = findViewById(R.id.address_layout); // Инициализируем addressLayout
         logoutButton = findViewById(R.id.logout_button);
     }
 
     private void setupListeners() {
         passwordLayout.setEndIconOnClickListener(v -> showChangePasswordDialog());
+        addressLayout.setEndIconOnClickListener(v -> showChangeAddressDialog()); // Добавляем слушатель для адреса
         logoutButton.setOnClickListener(v -> logout());
     }
 
@@ -121,7 +123,48 @@ public class ProfileActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private void showChangeAddressDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_change_address, null);
+        builder.setView(dialogView);
 
+        TextInputEditText newAddressInput = dialogView.findViewById(R.id.new_address_input);
+        MaterialButton saveAddressButton = dialogView.findViewById(R.id.save_address_button);
+
+        // Предзаполняем текущий адрес
+        newAddressInput.setText(addressText.getText().toString());
+
+        AlertDialog dialog = builder.create();
+
+        saveAddressButton.setOnClickListener(v -> {
+            String newAddress = newAddressInput.getText().toString().trim();
+
+            if (newAddress.isEmpty()) {
+                Toast.makeText(this, "Введите адрес", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (newAddress.length() < 5) {
+                Toast.makeText(this, "Адрес должен содержать минимум 5 символов", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            FirebaseUser user = auth.getCurrentUser();
+            if (user != null) {
+                String userId = user.getUid();
+                db.collection("users").document(userId)
+                        .update("address", newAddress)
+                        .addOnSuccessListener(aVoid -> {
+                            addressText.setText(newAddress); // Обновляем UI
+                            Toast.makeText(this, "Адрес изменён", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        })
+                        .addOnFailureListener(e -> Toast.makeText(this, "Ошибка изменения адреса: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
+
+        dialog.show();
+    }
 
     private void logout() {
         auth.signOut();

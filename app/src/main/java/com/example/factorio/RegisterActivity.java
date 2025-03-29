@@ -1,12 +1,16 @@
 package com.example.factorio;
 
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Patterns;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
@@ -15,11 +19,21 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.Random;
+import java.util.Locale;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import java.util.Properties;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -29,6 +43,7 @@ public class RegisterActivity extends AppCompatActivity {
     private TextView loginLink;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private String verificationCode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,21 +71,44 @@ public class RegisterActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // Обработка клика по кнопке регистрации
-        registerButton.setOnClickListener(v -> registerUser());
+        // Устанавливаем слушатель для поля даты рождения
+        birthdayInput.setOnClickListener(v -> showDatePickerDialog());
+        birthdayInput.setKeyListener(null); // Отключаем ручной ввод текста
 
-        // Обработка клика по ссылке "Войти"
+        registerButton.setOnClickListener(v -> initiateRegistration());
         loginLink.setOnClickListener(v -> {
             startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
             finish();
         });
     }
 
-    private void registerUser() {
-        // Сброс ошибок перед валидацией
+    private void showDatePickerDialog() {
+        Calendar calendar = Calendar.getInstance();
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+                this,
+                (view, selectedYear, selectedMonth, selectedDay) -> {
+                    // Форматируем выбранную дату
+                    Calendar selectedDate = Calendar.getInstance();
+                    selectedDate.set(selectedYear, selectedMonth, selectedDay);
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+                    String formattedDate = sdf.format(selectedDate.getTime());
+                    birthdayInput.setText(formattedDate);
+                },
+                year, month, day
+        );
+
+        // Ограничиваем максимальную дату (например, сегодняшним днём)
+        datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
+        datePickerDialog.show();
+    }
+
+    private void initiateRegistration() {
         clearErrors();
 
-        // Получение данных из полей
         String email = emailInput.getText().toString().trim();
         String password = passwordInput.getText().toString().trim();
         String confirmPassword = confirmPasswordInput.getText().toString().trim();
@@ -78,36 +116,102 @@ public class RegisterActivity extends AppCompatActivity {
         String birthday = birthdayInput.getText().toString().trim();
         String address = addressInput.getText().toString().trim();
 
-        // Валидация полей
         if (!validateInputs(email, password, confirmPassword, nickname, birthday, address)) {
             return;
         }
 
-        // Регистрация в Firebase Authentication
+        verificationCode = generateVerificationCode();
+
+        new Thread(() -> {
+            try {
+                sendVerificationEmail(email, verificationCode);
+                runOnUiThread(() -> showVerificationDialog(email, password, nickname, birthday, address));
+            } catch (MessagingException e) {
+                runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "Ошибка отправки кода: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private String generateVerificationCode() {
+        Random random = new Random();
+        int code = 100000 + random.nextInt(900000);
+        return String.valueOf(code);
+    }
+
+    private void sendVerificationEmail(String email, String code) throws MessagingException {
+        String host = "smtp.gmail.com";
+        final String username = "factoriostore@gmail.com";
+        final String password = "perv gdiy fjtb iely";
+
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", "587");
+
+        Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password);
+            }
+        });
+
+        Message message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(username));
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email));
+        message.setSubject("Код подтверждения регистрации");
+        message.setText("Ваш код подтверждения: " + code);
+
+        Transport.send(message);
+    }
+
+    private void showVerificationDialog(String email, String password, String nickname, String birthday, String address) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_verification, null);
+        builder.setView(dialogView);
+
+        EditText codeInput = dialogView.findViewById(R.id.codeInput);
+        TextView errorText = dialogView.findViewById(R.id.errorText);
+        MaterialButton confirmButton = dialogView.findViewById(R.id.confirmButton);
+
+        AlertDialog dialog = builder.create();
+        dialog.setCancelable(false);
+
+        confirmButton.setOnClickListener(v -> {
+            String enteredCode = codeInput.getText().toString().trim();
+            if (enteredCode.equals(verificationCode)) {
+                registerUser(email, password, nickname, birthday, address);
+                dialog.dismiss();
+            } else {
+                errorText.setVisibility(View.VISIBLE);
+                errorText.setText("Неверный код подтверждения");
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void registerUser(String email, String password, String nickname, String birthday, String address) {
         auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         String userId = auth.getCurrentUser().getUid();
 
-                        // Создание объекта пользователя для Firestore
                         Map<String, Object> user = new HashMap<>();
                         user.put("email", email);
                         user.put("nickname", nickname);
                         user.put("birthday", birthday);
                         user.put("address", address);
 
-                        // Сохранение данных в Firestore
                         db.collection("users").document(userId)
                                 .set(user)
                                 .addOnSuccessListener(aVoid -> {
                                     Toast.makeText(this, "Регистрация успешна, войдите в аккаунт", Toast.LENGTH_SHORT).show();
-                                    auth.signOut(); // Выход после регистрации
+                                    auth.signOut();
                                     startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                                     finish();
                                 })
                                 .addOnFailureListener(e -> {
                                     Toast.makeText(this, "Ошибка сохранения данных: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                    // Удаляем пользователя из Auth, если Firestore не записался
                                     auth.getCurrentUser().delete();
                                 });
                     } else {
@@ -119,7 +223,6 @@ public class RegisterActivity extends AppCompatActivity {
     private boolean validateInputs(String email, String password, String confirmPassword, String nickname, String birthday, String address) {
         boolean isValid = true;
 
-        // Валидация почты
         if (email.isEmpty()) {
             emailLayout.setError("Введите почту");
             isValid = false;
@@ -128,7 +231,6 @@ public class RegisterActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        // Валидация пароля
         if (password.isEmpty()) {
             passwordLayout.setError("Введите пароль");
             isValid = false;
@@ -137,7 +239,6 @@ public class RegisterActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        // Валидация подтверждения пароля
         if (confirmPassword.isEmpty()) {
             confirmPasswordLayout.setError("Подтвердите пароль");
             isValid = false;
@@ -146,7 +247,6 @@ public class RegisterActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        // Валидация никнейма
         if (nickname.isEmpty()) {
             nicknameLayout.setError("Введите никнейм");
             isValid = false;
@@ -155,16 +255,11 @@ public class RegisterActivity extends AppCompatActivity {
             isValid = false;
         }
 
-        // Валидация даты рождения
         if (birthday.isEmpty()) {
-            birthdayLayout.setError("Введите дату рождения");
-            isValid = false;
-        } else if (!isValidDate(birthday)) {
-            birthdayLayout.setError("Некорректный формат даты (ДД.ММ.ГГГГ)");
+            birthdayLayout.setError("Выберите дату рождения");
             isValid = false;
         }
 
-        // Валидация адреса
         if (address.isEmpty()) {
             addressLayout.setError("Введите адрес");
             isValid = false;
@@ -174,17 +269,6 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         return isValid;
-    }
-
-    private boolean isValidDate(String date) {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy");
-        sdf.setLenient(false); // Строгая проверка
-        try {
-            sdf.parse(date);
-            return true;
-        } catch (ParseException e) {
-            return false;
-        }
     }
 
     private void clearErrors() {

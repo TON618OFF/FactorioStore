@@ -37,6 +37,8 @@
         <activity android:name=".RegisterActivity"/>
         <activity android:name=".ProductDetailsActivity"/>
         <activity android:name=".FavoritesActivity"/>
+        <activity android:name=".CategoryProductsActivity"/>
+        <activity android:name=".CheckoutActivity"/>
     </application>
 
 </manifest>

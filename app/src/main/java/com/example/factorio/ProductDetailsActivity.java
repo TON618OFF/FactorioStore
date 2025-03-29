@@ -29,7 +29,7 @@ import java.util.Map;
 public class ProductDetailsActivity extends AppCompatActivity {
 
     private ImageView productImage;
-    private TextView productName, productCategory, productDescription, productPrice, ratingValue;
+    private TextView productName, productCategory, productDescription, productPrice, ratingValue, detailQuantity;
     private Button addToCartButton, submitReviewButton;
     private EditText reviewInput;
     private RadioGroup ratingRadioGroup;
@@ -37,22 +37,23 @@ public class ProductDetailsActivity extends AppCompatActivity {
     private LinearLayout addReviewContainer;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private List<Review> reviewsList; // Если Review вынесен, используйте просто Review
-    private ReviewAdapter reviewAdapter; // Теперь используем отдельный класс
+    private List<Review> reviewsList;
+    private ReviewAdapter reviewAdapter;
     private String productId;
     private ImageView favoriteIcon;
+    private Product product;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_product_details);
 
-        // Инициализация компонентов
         productImage = findViewById(R.id.product_image);
         productName = findViewById(R.id.product_name);
         productCategory = findViewById(R.id.product_category);
         productDescription = findViewById(R.id.product_description);
         productPrice = findViewById(R.id.product_price);
+        detailQuantity = findViewById(R.id.detail_quantity);
         addToCartButton = findViewById(R.id.add_to_cart_button);
         reviewInput = findViewById(R.id.review_input);
         ratingRadioGroup = findViewById(R.id.rating_radio_group);
@@ -65,18 +66,16 @@ public class ProductDetailsActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
         reviewsList = new ArrayList<>();
-        reviewAdapter = new ReviewAdapter(reviewsList); // Используем новый ReviewAdapter
+        reviewAdapter = new ReviewAdapter(reviewsList);
         reviewsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         reviewsRecyclerView.setAdapter(reviewAdapter);
 
-        // Получение productId из Intent
         productId = getIntent().getStringExtra("productId");
         if (productId != null) {
             loadProductDetails();
             loadReviews();
         }
 
-        // Проверка авторизации для отображения поля добавления отзыва
         FirebaseUser user = auth.getCurrentUser();
         if (user != null) {
             addReviewContainer.setVisibility(View.VISIBLE);
@@ -84,7 +83,6 @@ public class ProductDetailsActivity extends AppCompatActivity {
             addReviewContainer.setVisibility(View.GONE);
         }
 
-        // Обработка выбора рейтинга
         ratingRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             int rating = 5;
             if (checkedId == R.id.rating_1) rating = 1;
@@ -95,29 +93,22 @@ public class ProductDetailsActivity extends AppCompatActivity {
             ratingValue.setText(String.valueOf(rating));
         });
 
-        // Добавление в корзину
         addToCartButton.setOnClickListener(v -> {
-            db.collection("products").document(productId)
-                    .get()
-                    .addOnSuccessListener(document -> {
-                        if (document.exists()) {
-                            String name = document.getString("name");
-                            Long priceLong = document.getLong("price");
-                            String imageUrl = document.getString("imageUrl");
-                            CartItem cartItem = new CartItem(
-                                    productId,
-                                    name,
-                                    priceLong != null ? priceLong.intValue() : 0,
-                                    1,
-                                    imageUrl
-                            );
-                            CartManager.getInstance().addToCart(cartItem);
-                            Toast.makeText(ProductDetailsActivity.this, "Товар добавлен в корзину", Toast.LENGTH_SHORT).show();
-                        }
-                    });
+            if (product != null && product.getQuantity() > 0) {
+                CartItem cartItem = new CartItem(
+                        product.getId(),
+                        product.getName(),
+                        product.getPrice(),
+                        1,
+                        product.getImageUrl()
+                );
+                CartManager.getInstance().addToCart(cartItem);
+                Toast.makeText(this, "Товар добавлен в корзину", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Товара нет в наличии", Toast.LENGTH_SHORT).show();
+            }
         });
 
-        // Обработка нажатия на favoriteIcon
         favoriteIcon.setOnClickListener(v -> {
             FirebaseUser currentUser = auth.getCurrentUser();
             if (currentUser == null) {
@@ -129,6 +120,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
             isFavorite = !isFavorite;
             favoriteIcon.setImageResource(isFavorite ? R.drawable.favorite_on : R.drawable.favorite);
             favoriteIcon.setTag(isFavorite);
+            if (product != null) product.setFavorite(isFavorite);
 
             String userId = currentUser.getUid();
             if (isFavorite) {
@@ -154,7 +146,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
                         });
             }
         });
-        // Отправка отзыва
+
         submitReviewButton.setOnClickListener(v -> {
             if (user != null) {
                 db.collection("users").document(user.getUid())
@@ -185,22 +177,48 @@ public class ProductDetailsActivity extends AppCompatActivity {
                         Long priceLong = document.getLong("price");
                         String imageUrl = document.getString("imageUrl");
                         String categoryId = document.getString("category");
+                        int quantity = document.getLong("quantity").intValue(); // Загружаем quantity
 
-                        Product product = new Product(
+                        product = new Product(
                                 name,
                                 description,
                                 priceLong != null ? priceLong.intValue() : 0,
                                 imageUrl,
                                 productId,
                                 categoryId,
-                                getIntent().getStringExtra("categoryName")
+                                getIntent().getStringExtra("categoryName"),
+                                quantity
                         );
 
                         productName.setText(product.getName());
                         productDescription.setText(product.getDescription());
                         productPrice.setText(String.format("%d руб.", product.getPrice()));
-                        productCategory.setText("Категория: " + product.getCategoryName()); // Добавьте эту строку
+                        productCategory.setText("Категория: " + product.getCategoryName());
+                        detailQuantity.setText("В наличии: " + product.getQuantity()); // Отображаем quantity
                         Glide.with(this).load(product.getImageUrl()).placeholder(R.drawable.ic_placeholder).error(R.drawable.ic_placeholder).into(productImage);
+
+                        // Управление кнопкой "Добавить в корзину"
+                        if (product.getQuantity() > 0) {
+                            addToCartButton.setText("Добавить в корзину");
+                            addToCartButton.setEnabled(true); // Кнопка активна
+                            addToCartButton.setBackgroundTintList(getResources().getColorStateList(R.color.circuit_green));
+                            addToCartButton.setOnClickListener(v -> {
+                                CartItem cartItem = new CartItem(
+                                        product.getId(),
+                                        product.getName(),
+                                        product.getPrice(),
+                                        1,
+                                        product.getImageUrl()
+                                );
+                                CartManager.getInstance().addToCart(cartItem);
+                                Toast.makeText(this, "Товар добавлен в корзину", Toast.LENGTH_SHORT).show();
+                            });
+                        } else {
+                            addToCartButton.setText("Нет в наличии");
+                            addToCartButton.setTextColor(getResources().getColorStateList(R.color.white));
+                            addToCartButton.setEnabled(false); // Кнопка неактивна
+                            addToCartButton.setBackgroundTintList(getResources().getColorStateList(R.color.coal_gray));
+                        }
 
                         FirebaseUser user = auth.getCurrentUser();
                         if (user != null) {
@@ -228,7 +246,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
                             String text = document.getString("text");
                             Long ratingLong = document.getLong("rating");
                             int rating = ratingLong != null ? ratingLong.intValue() : 0;
-                            reviewsList.add(new Review(nickname, text, rating)); // Если Review вынесен
+                            reviewsList.add(new Review(nickname, text, rating));
                         }
                         reviewAdapter.notifyDataSetChanged();
                     }

@@ -1,13 +1,18 @@
 package com.example.factorio;
 
+import static android.app.Activity.RESULT_OK;
+
+import android.content.Intent;
 import android.graphics.Paint;
 import android.graphics.pdf.PdfDocument;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,18 +23,16 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.HashMap;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import javax.mail.Message;
+import javax.mail.MessagingException;
 import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
@@ -40,8 +43,12 @@ import javax.mail.internet.MimeMultipart;
 
 public class CartPageFragment extends Fragment {
 
+    private static final int CHECKOUT_REQUEST_CODE = 1;
+    private static final String TAG = "CartPageFragment";
+
     private RecyclerView cartRecyclerView;
     private TextView cartItemsCount, cartTotalPrice;
+    private ImageView backIcon;
     private ImageButton clearCartButton;
     private Button checkoutButton;
     private CartAdapter cartAdapter;
@@ -70,9 +77,54 @@ public class CartPageFragment extends Fragment {
             updateUI();
         });
 
-        checkoutButton.setOnClickListener(v -> checkout());
+        checkoutButton.setOnClickListener(v -> {
+            if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+                Toast.makeText(getContext(), "Войдите, чтобы оформить заказ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (cartManager.getCartItems().isEmpty()) {
+                Toast.makeText(getContext(), "Корзина пуста", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent intent = new Intent(getActivity(), CheckoutActivity.class);
+            intent.putExtra("cart_items", new ArrayList<>(cartManager.getCartItems()));
+            startActivityForResult(intent, CHECKOUT_REQUEST_CODE);
+        });
 
         return view;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == CHECKOUT_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
+            String orderId = data.getStringExtra("order_id");
+            String email = data.getStringExtra("email");
+            List<CartItem> items = (List<CartItem>) data.getSerializableExtra("cart_items");
+
+            new Thread(() -> {
+                try {
+                    File pdfFile = generatePdf(orderId, email, items);
+                    if (pdfFile.exists() && pdfFile.length() > 0) {
+                        Log.i(TAG, "PDF файл успешно создан: " + pdfFile.getAbsolutePath() + ", размер: " + pdfFile.length());
+                        sendEmailWithPdf(email, orderId, pdfFile);
+                        getActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
+                            cartManager.removeAllFromCart();
+                            updateUI();
+                        });
+                    } else {
+                        Log.e(TAG, "PDF файл не существует или пуст: " + pdfFile.getAbsolutePath());
+                        getActivity().runOnUiThread(() ->
+                                Toast.makeText(getContext(), "Ошибка: PDF файл не создан", Toast.LENGTH_SHORT).show());
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Ошибка при отправке чека: " + e.getMessage(), e);
+                    getActivity().runOnUiThread(() ->
+                            Toast.makeText(getContext(), "Ошибка отправки чека", Toast.LENGTH_SHORT).show());
+                }
+            }).start();
+        }
     }
 
     private void loadCart() {
@@ -99,73 +151,19 @@ public class CartPageFragment extends Fragment {
         updateUI();
     }
 
-    private void checkout() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Toast.makeText(getContext(), "Войдите, чтобы оформить заказ", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String email = user.getEmail();
-        if (email == null) {
-            Toast.makeText(getContext(), "Email не найден", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        List<CartItem> items = cartManager.getCartItems();
-        if (items.isEmpty()) {
-            Toast.makeText(getContext(), "Корзина пуста", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Map<String, Object> orderData = new HashMap<>();
-        orderData.put("userId", user.getUid());
-        orderData.put("email", email);
-        orderData.put("timestamp", FieldValue.serverTimestamp());
-        orderData.put("items", items);
-        orderData.put("totalPrice", calculateTotalPrice(items));
-
-        db.collection("orders")
-                .add(orderData)
-                .addOnSuccessListener(documentReference -> {
-                    String orderId = documentReference.getId();
-                    Toast.makeText(getContext(), "Заказ оформлен! ID: " + orderId, Toast.LENGTH_SHORT).show();
-
-                    new Thread(() -> {
-                        try {
-                            File pdfFile = generatePdf(orderId, email, items);
-                            sendEmailWithPdf(email, orderId, pdfFile);
-                            getActivity().runOnUiThread(() -> {
-                                Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
-                                cartManager.removeAllFromCart();
-                                updateUI();
-                            });
-                        } catch (Exception e) {
-                            getActivity().runOnUiThread(() ->
-                                    Toast.makeText(getContext(), "Ошибка: " + e.getMessage(), Toast.LENGTH_LONG).show());
-                        }
-                    }).start();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Ошибка при оформлении заказа: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private File generatePdf(String orderId, String email, List<CartItem> items) throws Exception {
+    private File generatePdf(String orderId, String email, List<CartItem> items) throws IOException {
         File pdfFile = new File(getContext().getCacheDir(), "receipt_" + orderId + ".pdf");
         PdfDocument pdfDocument = new PdfDocument();
-        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create(); // A4 размер в точках (595x842)
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
         PdfDocument.Page page = pdfDocument.startPage(pageInfo);
         android.graphics.Canvas canvas = page.getCanvas();
         Paint paint = new Paint();
         paint.setTextSize(16);
         paint.setFakeBoldText(true);
 
-        int yPosition = 40; // Начальная позиция по Y
+        int yPosition = 40;
 
-        // Заголовок
-        canvas.drawText("Чек заказа", 280, yPosition, paint); // Центрируем по X (595 / 2)
+        canvas.drawText("Чек заказа", 280, yPosition, paint);
         paint.setFakeBoldText(false);
         paint.setTextSize(12);
         yPosition += 20;
@@ -177,16 +175,14 @@ public class CartPageFragment extends Fragment {
         canvas.drawText("Пользователь: " + email, 20, yPosition, paint);
         yPosition += 30;
 
-        // Заголовки таблицы
         canvas.drawText("Товар", 20, yPosition, paint);
         canvas.drawText("Кол-во", 300, yPosition, paint);
         canvas.drawText("Цена", 400, yPosition, paint);
         canvas.drawText("Сумма", 500, yPosition, paint);
         yPosition += 10;
-        canvas.drawLine(20, yPosition, 575, yPosition, paint); // Линия под заголовками
+        canvas.drawLine(20, yPosition, 575, yPosition, paint);
         yPosition += 20;
 
-        // Товары
         for (CartItem item : items) {
             canvas.drawText(item.getName(), 20, yPosition, paint);
             canvas.drawText(String.valueOf(item.getQuantity()), 300, yPosition, paint);
@@ -196,20 +192,25 @@ public class CartPageFragment extends Fragment {
         }
 
         yPosition += 10;
-        canvas.drawLine(20, yPosition, 575, yPosition, paint); // Линия перед итогом
+        canvas.drawLine(20, yPosition, 575, yPosition, paint);
         yPosition += 20;
 
-        // Итог
         canvas.drawText("Итого: " + calculateTotalPrice(items) + " руб.", 500, yPosition, paint);
 
         pdfDocument.finishPage(page);
-        pdfDocument.writeTo(new FileOutputStream(pdfFile));
-        pdfDocument.close();
+        try (FileOutputStream fos = new FileOutputStream(pdfFile)) {
+            pdfDocument.writeTo(fos);
+        } catch (IOException e) {
+            Log.e(TAG, "Ошибка записи PDF: " + e.getMessage(), e);
+            throw e;
+        } finally {
+            pdfDocument.close();
+        }
 
         return pdfFile;
     }
 
-    private void sendEmailWithPdf(String email, String orderId, File pdfFile) throws Exception {
+    private void sendEmailWithPdf(String email, String orderId, File pdfFile) throws MessagingException, IOException {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -218,7 +219,7 @@ public class CartPageFragment extends Fragment {
 
         Session session = Session.getInstance(props, new javax.mail.Authenticator() {
             protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
-                return new javax.mail.PasswordAuthentication("factoriostore@gmail.com", "vzmn oowl dvmq dhel");
+                return new javax.mail.PasswordAuthentication("factoriostore@gmail.com", "perv gdiy fjtb iely");
             }
         });
 
@@ -231,7 +232,12 @@ public class CartPageFragment extends Fragment {
         textPart.setText("Спасибо за заказ! Чек во вложении.");
 
         MimeBodyPart attachmentPart = new MimeBodyPart();
-        attachmentPart.attachFile(pdfFile);
+        try {
+            attachmentPart.attachFile(pdfFile);
+        } catch (IOException e) {
+            Log.e(TAG, "Ошибка прикрепления файла: " + e.getMessage(), e);
+            throw e;
+        }
 
         Multipart multipart = new MimeMultipart();
         multipart.addBodyPart(textPart);
@@ -239,7 +245,9 @@ public class CartPageFragment extends Fragment {
 
         message.setContent(multipart);
 
+        Log.i(TAG, "Попытка отправки email на " + email);
         Transport.send(message);
+        Log.i(TAG, "Email успешно отправлен");
     }
 
     private int calculateTotalPrice(List<CartItem> items) {

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_background"
+    tools:context=".CategoryProductsActivity">
+
+    <!-- Полупрозрачный фон для заголовка -->
+    <LinearLayout
+        android:id="@+id/title_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#80000000"
+        android:orientation="vertical"
+        android:elevation="4dp">
+
+        <TextView
+            android:id="@+id/category_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Категория"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:padding="16dp"
+            android:shadowColor="@android:color/black"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"/>
+    </LinearLayout>
+
+    <!-- RecyclerView для товаров -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/category_products_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/title_container"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        android:background="@android:color/transparent"
+        tools:listitem="@layout/item_product"/>
+
+    <!-- Плавающая кнопка "Назад" -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/back_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignTop="@id/title_container"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/go_back"
+        android:contentDescription="Назад"
+        app:backgroundTint="@color/oil_blue"
+        app:tint="@android:color/white"
+        app:fabSize="normal"
+        app:elevation="6dp"
+        app:hoveredFocusedTranslationZ="12dp"
+        app:rippleColor="@android:color/white"/>
+
+</RelativeLayout>

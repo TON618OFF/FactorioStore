@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/checkout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".CheckoutActivity"
+    android:background="@color/coal_black"
+    android:orientation="vertical">
+
+    <!-- Полупрозрачный фон для заголовка -->
+    <RelativeLayout
+        android:id="@+id/checkout_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#43000000"
+        android:elevation="4dp"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Оформление"
+            android:textSize="24sp"
+            android:textColor="@android:color/white"
+            android:layout_centerHorizontal="true"/>
+
+    </RelativeLayout>
+
+    <!-- RecyclerView для товаров -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/checkout_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="20dp"
+        tools:listitem="@layout/item_cart"/>
+
+    <!-- Блок способа оплаты -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_text"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Способ оплаты"
+            android:textColor="@color/white"
+            android:textSize="16sp"/>
+
+        <RadioGroup
+            android:id="@+id/payment_method_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <RadioButton
+                android:id="@+id/payment_card"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Картой"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:checked="true"/>
+
+            <RadioButton
+                android:id="@+id/payment_cash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Наличными"
+                android:textColor="@color/white"
+                android:textSize="14sp"/>
+        </RadioGroup>
+    </LinearLayout>
+
+    <!-- Блок итоговой информации -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_text"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="16dp">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/items_count_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Товары (0)"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/total_price_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="0 ₽"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/commission_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/commission_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Комиссия"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/commission_amount_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="0 ₽"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/total_label_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Итого"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/total_amount_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="0 ₽"
+                android:textColor="@color/white"
+                android:textSize="16sp"/>
+        </RelativeLayout>
+
+        <Button
+            android:id="@+id/checkout_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Оформить заказ"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:backgroundTint="@color/circuit_green"
+            android:enabled="false"/>
+
+        <CheckBox
+            android:id="@+id/terms_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Согласен с условиями Правил пользования торговой площадкой и правилами возврата"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:maxWidth="300dp"/>
+    </LinearLayout>
+</LinearLayout>
