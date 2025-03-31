@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardBackgroundColor="@color/coal_gray">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/order_id_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Заказ #123"
+            android:textSize="16sp"
+            android:textColor="@color/white"
+        android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/date_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Дата: 01.01.2023 12:00"
+            android:textSize="14sp"
+            android:textColor="@color/oil_teal"
+        android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/items_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Товары"
+            android:textSize="14sp"
+            android:textColor="@color/white"
+        android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/subtotal_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Промежуточная сумма: 0 руб."
+            android:textSize="14sp"
+            android:textColor="@color/smoke_white"
+        android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/commission_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Комиссия: 0 руб."
+            android:textSize="14sp"
+            android:textColor="@color/smoke_white"
+        android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/total_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Итого: 0 руб."
+            android:textSize="16sp"
+            android:textColor="@color/circuit_green"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/payment_method_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Способ оплаты: Наличные"
+            android:textSize="14sp"
+            android:textColor="@color/oil_teal"
+        android:layout_marginTop="4dp"/>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

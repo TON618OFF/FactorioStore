@@ -4,8 +4,8 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
-import android.widget.DatePicker;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,9 +25,11 @@ import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
+    private static final String TAG = "ProfileActivity";
+
     private TextInputEditText emailText, nicknameText, birthDateText, addressText, passwordText;
     private TextInputLayout passwordLayout, addressLayout, birthDateLayout, nicknameLayout;
-    private MaterialButton logoutButton, favoritesButton;
+    private MaterialButton logoutButton, favoritesButton, ordersHistoryButton, adminPanelButton;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private Calendar calendar;
@@ -59,6 +61,8 @@ public class ProfileActivity extends AppCompatActivity {
         nicknameLayout = findViewById(R.id.nickname_layout);
         logoutButton = findViewById(R.id.logout_button);
         favoritesButton = findViewById(R.id.favorites_button);
+        ordersHistoryButton = findViewById(R.id.orders_history_button);
+        adminPanelButton = findViewById(R.id.admin_panel_button);
     }
 
     private void setupListeners() {
@@ -68,6 +72,8 @@ public class ProfileActivity extends AppCompatActivity {
         nicknameLayout.setEndIconOnClickListener(v -> showChangeNicknameDialog());
         logoutButton.setOnClickListener(v -> logout());
         favoritesButton.setOnClickListener(v -> goToFavorites());
+        ordersHistoryButton.setOnClickListener(v -> goToOrdersHistory());
+        adminPanelButton.setOnClickListener(v -> goToAdminPanel()); // Слушатель для кнопки админки
     }
 
     private void loadUserProfile() {
@@ -83,9 +89,36 @@ public class ProfileActivity extends AppCompatActivity {
                             birthDateText.setText(document.getString("birthday"));
                             addressText.setText(document.getString("address"));
                             passwordText.setText("********");
+
+                            // Проверка isAdmin
+                            Boolean isAdmin = document.getBoolean("isAdmin");
+                            Log.d(TAG, "isAdmin для пользователя " + userId + ": " + isAdmin);
+                            if (isAdmin != null && isAdmin) {
+                                adminPanelButton.setVisibility(View.VISIBLE);
+                            } else {
+                                adminPanelButton.setVisibility(View.GONE);
+                                // Если isAdmin отсутствует или false, добавляем его как false
+                                if (isAdmin == null) {
+                                    db.collection("users").document(userId)
+                                            .update("isAdmin", false)
+                                            .addOnSuccessListener(aVoid -> Log.d(TAG, "isAdmin установлен в false для " + userId))
+                                            .addOnFailureListener(e -> Log.e(TAG, "Ошибка установки isAdmin: " + e.getMessage()));
+                                }
+                            }
+                        } else {
+                            Log.w(TAG, "Документ пользователя не существует для " + userId);
+                            Toast.makeText(this, "Профиль не найден", Toast.LENGTH_SHORT).show();
                         }
                     })
-                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка загрузки профиля: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Ошибка загрузки профиля: " + e.getMessage());
+                        Toast.makeText(this, "Ошибка загрузки профиля: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            Log.w(TAG, "Пользователь не авторизован");
+            Toast.makeText(this, "Пожалуйста, войдите в аккаунт", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
         }
     }
 
@@ -132,7 +165,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(document -> {
                     Long lastChangeTimestamp = document.getLong("lastNicknameChange");
                     long currentTime = System.currentTimeMillis();
-                    long oneDayInMillis = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+                    long oneDayInMillis = 24 * 60 * 60 * 1000;
 
                     if (lastChangeTimestamp != null && (currentTime - lastChangeTimestamp < oneDayInMillis)) {
                         long timeLeft = oneDayInMillis - (currentTime - lastChangeTimestamp);
@@ -287,6 +320,16 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void goToFavorites() {
         Intent intent = new Intent(this, FavoritesActivity.class);
+        startActivity(intent);
+    }
+
+    private void goToOrdersHistory() {
+        Intent intent = new Intent(this, OrdersHistoryActivity.class);
+        startActivity(intent);
+    }
+
+    private void goToAdminPanel() {
+        Intent intent = new Intent(this, AdminPanelActivity.class);
         startActivity(intent);
     }
 }

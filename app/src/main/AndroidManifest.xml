@@ -40,6 +40,8 @@
         <activity android:name=".CategoryProductsActivity"/>
         <activity android:name=".CheckoutActivity"/>
         <activity android:name=".FilterSortActivity" />
+        <activity android:name=".OrdersHistoryActivity"/>
+        <activity android:name=".AdminPanelActivity"/>
     </application>
 
 </manifest>

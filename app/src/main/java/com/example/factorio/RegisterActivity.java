@@ -3,6 +3,7 @@ package com.example.factorio;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,6 +18,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.SimpleDateFormat;
@@ -36,6 +38,8 @@ import javax.mail.internet.MimeMessage;
 import java.util.Properties;
 
 public class RegisterActivity extends AppCompatActivity {
+
+    private static final String TAG = "RegisterActivity";
 
     private TextInputEditText emailInput, passwordInput, confirmPasswordInput, nicknameInput, birthdayInput, addressInput;
     private TextInputLayout emailLayout, passwordLayout, confirmPasswordLayout, nicknameLayout, birthdayLayout, addressLayout;
@@ -91,7 +95,6 @@ public class RegisterActivity extends AppCompatActivity {
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 this,
                 (view, selectedYear, selectedMonth, selectedDay) -> {
-                    // Форматируем выбранную дату
                     Calendar selectedDate = Calendar.getInstance();
                     selectedDate.set(selectedYear, selectedMonth, selectedDay);
                     SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
@@ -101,7 +104,6 @@ public class RegisterActivity extends AppCompatActivity {
                 year, month, day
         );
 
-        // Ограничиваем максимальную дату (например, сегодняшним днём)
         datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
         datePickerDialog.show();
     }
@@ -194,28 +196,37 @@ public class RegisterActivity extends AppCompatActivity {
         auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        String userId = auth.getCurrentUser().getUid();
+                        FirebaseUser user = auth.getCurrentUser();
+                        if (user != null) {
+                            String userId = user.getUid();
+                            Map<String, Object> userData = new HashMap<>();
+                            userData.put("email", email);
+                            userData.put("nickname", nickname);
+                            userData.put("birthday", birthday);
+                            userData.put("address", address);
+                            userData.put("isAdmin", false); // Устанавливаем isAdmin в false по умолчанию
 
-                        Map<String, Object> user = new HashMap<>();
-                        user.put("email", email);
-                        user.put("nickname", nickname);
-                        user.put("birthday", birthday);
-                        user.put("address", address);
+                            Log.d(TAG, "Подготовленные данные для Firestore: " + userData.toString());
 
-                        db.collection("users").document(userId)
-                                .set(user)
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "Регистрация успешна, войдите в аккаунт", Toast.LENGTH_SHORT).show();
-                                    auth.signOut();
-                                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                                    finish();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Toast.makeText(this, "Ошибка сохранения данных: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                    auth.getCurrentUser().delete();
-                                });
+                            db.collection("users").document(userId)
+                                    .set(userData)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Пользователь успешно зарегистрирован в Firestore: " + userId);
+                                        Toast.makeText(this, "Регистрация успешна", Toast.LENGTH_SHORT).show();
+                                        startActivity(new Intent(this, ProfileActivity.class));
+                                        finish();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Ошибка записи в Firestore: " + e.getMessage(), e);
+                                        Toast.makeText(this, "Ошибка регистрации: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
+                        } else {
+                            Log.e(TAG, "FirebaseUser is null после успешной регистрации");
+                            Toast.makeText(this, "Ошибка: пользователь не найден", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
-                        Toast.makeText(this, "Ошибка регистрации: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка создания пользователя в Firebase Auth: " + task.getException().getMessage());
+                        Toast.makeText(this, "Ошибка: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }

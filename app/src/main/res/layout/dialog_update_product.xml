@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/coal_black">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Обновить товар"
+        android:textSize="18sp"
+        android:textColor="@color/white"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Название:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <EditText
+        android:id="@+id/product_name_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Цена:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <EditText
+        android:id="@+id/product_price_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:textColor="@color/white"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="URL изображения:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <EditText
+        android:id="@+id/product_image_url_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Описание:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <EditText
+        android:id="@+id/product_description_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Категория:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <Spinner
+        android:id="@+id/product_category_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Количество:"
+        android:textColor="@color/white"
+        android:textSize="14sp"/>
+    <EditText
+        android:id="@+id/product_quantity_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:textColor="@color/white"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/save_product_button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Сохранить"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/circuit_green"
+        app:cornerRadius="8dp"/>
+</LinearLayout>
