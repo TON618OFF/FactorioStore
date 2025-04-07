@@ -20,12 +20,15 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.Locale;
 
 import javax.mail.Message;
@@ -40,6 +43,9 @@ import java.util.Properties;
 public class RegisterActivity extends AppCompatActivity {
 
     private static final String TAG = "RegisterActivity";
+    private static final Pattern PASSWORD_PATTERN =
+            Pattern.compile("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{6,}$");
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[A-Za-z]+[A-Za-z0-9]*$");
 
     private TextInputEditText emailInput, passwordInput, confirmPasswordInput, nicknameInput, birthdayInput, addressInput;
     private TextInputLayout emailLayout, passwordLayout, confirmPasswordLayout, nicknameLayout, birthdayLayout, addressLayout;
@@ -54,7 +60,6 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // Инициализация компонентов
         emailLayout = findViewById(R.id.emailLayout);
         passwordLayout = findViewById(R.id.passwordLayout);
         confirmPasswordLayout = findViewById(R.id.confirmPasswordLayout);
@@ -75,9 +80,8 @@ public class RegisterActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // Устанавливаем слушатель для поля даты рождения
         birthdayInput.setOnClickListener(v -> showDatePickerDialog());
-        birthdayInput.setKeyListener(null); // Отключаем ручной ввод текста
+        birthdayInput.setKeyListener(null);
 
         registerButton.setOnClickListener(v -> initiateRegistration());
         loginLink.setOnClickListener(v -> {
@@ -104,7 +108,11 @@ public class RegisterActivity extends AppCompatActivity {
                 year, month, day
         );
 
+        Calendar minDate = Calendar.getInstance();
+        minDate.set(1950, Calendar.JANUARY, 1);
+        datePickerDialog.getDatePicker().setMinDate(minDate.getTimeInMillis());
         datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
+
         datePickerDialog.show();
     }
 
@@ -122,8 +130,40 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        verificationCode = generateVerificationCode();
+        // Проверка уникальности никнейма
+        db.collection("users")
+                .whereEqualTo("nickname", nickname)
+                .get()
+                .addOnCompleteListener(nicknameTask -> {
+                    if (nicknameTask.isSuccessful()) {
+                        QuerySnapshot snapshot = nicknameTask.getResult();
+                        if (!snapshot.isEmpty()) {
+                            nicknameLayout.setError("Этот никнейм уже занят");
+                        } else {
+                            // Проверка зарегистрированной почты
+                            auth.fetchSignInMethodsForEmail(email)
+                                    .addOnCompleteListener(emailTask -> {
+                                        if (emailTask.isSuccessful()) {
+                                            if (emailTask.getResult().getSignInMethods().isEmpty()) {
+                                                // Почта не зарегистрирована, отправляем код
+                                                sendVerificationCode(email, password, nickname, birthday, address);
+                                            } else {
+                                                // Почта уже зарегистрирована
+                                                emailLayout.setError("Эта почта уже зарегистрирована. Пожалуйста, войдите в систему.");
+                                            }
+                                        } else {
+                                            Toast.makeText(RegisterActivity.this, "Ошибка проверки почты: " + emailTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        }
+                    } else {
+                        Toast.makeText(this, "Ошибка проверки никнейма: " + nicknameTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
 
+    private void sendVerificationCode(String email, String password, String nickname, String birthday, String address) {
+        verificationCode = generateVerificationCode();
         new Thread(() -> {
             try {
                 sendVerificationEmail(email, verificationCode);
@@ -204,7 +244,7 @@ public class RegisterActivity extends AppCompatActivity {
                             userData.put("nickname", nickname);
                             userData.put("birthday", birthday);
                             userData.put("address", address);
-                            userData.put("isAdmin", false); // Устанавливаем isAdmin в false по умолчанию
+                            userData.put("isAdmin", false);
 
                             Log.d(TAG, "Подготовленные данные для Firestore: " + userData.toString());
 
@@ -245,8 +285,8 @@ public class RegisterActivity extends AppCompatActivity {
         if (password.isEmpty()) {
             passwordLayout.setError("Введите пароль");
             isValid = false;
-        } else if (password.length() < 6) {
-            passwordLayout.setError("Пароль должен содержать минимум 6 символов");
+        } else if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            passwordLayout.setError("Пароль должен содержать минимум 6 символов, заглавную букву, строчную букву, цифру и спецсимвол (!@#$%^&*)");
             isValid = false;
         }
 
@@ -264,18 +304,36 @@ public class RegisterActivity extends AppCompatActivity {
         } else if (nickname.length() < 3) {
             nicknameLayout.setError("Никнейм должен содержать минимум 3 символа");
             isValid = false;
+        } else if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
+            nicknameLayout.setError("Никнейм должен начинаться с буквы и содержать только буквы и цифры");
+            isValid = false;
         }
 
         if (birthday.isEmpty()) {
             birthdayLayout.setError("Выберите дату рождения");
             isValid = false;
+        } else {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            try {
+                Calendar selectedDate = Calendar.getInstance();
+                selectedDate.setTime(sdf.parse(birthday));
+                Calendar minDate = Calendar.getInstance();
+                minDate.set(1950, Calendar.JANUARY, 0);
+                if (selectedDate.before(minDate)) {
+                    birthdayLayout.setError("Дата рождения должна быть не ранее 01.01.1950");
+                    isValid = false;
+                }
+            } catch (ParseException e) {
+                birthdayLayout.setError("Некорректный формат даты");
+                isValid = false;
+            }
         }
 
         if (address.isEmpty()) {
             addressLayout.setError("Введите адрес");
             isValid = false;
-        } else if (address.length() < 5) {
-            addressLayout.setError("Адрес должен содержать минимум 5 символов");
+        } else if (address.length() < 15) {
+            addressLayout.setError("Адрес должен содержать минимум 15 символов");
             isValid = false;
         }
 
