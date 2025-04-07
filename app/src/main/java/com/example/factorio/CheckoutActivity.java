@@ -37,7 +37,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private Button checkoutButton;
     private CheckBox termsCheckbox;
     private List<CartItem> cartItems;
-    private CheckoutAdapter checkoutAdapter; // Новый адаптер
+    private CheckoutAdapter checkoutAdapter;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
@@ -52,6 +52,9 @@ public class CheckoutActivity extends AppCompatActivity {
 
         // Инициализация UI
         initViews();
+
+        // Изначально кнопка неактивна
+        checkoutButton.setEnabled(false);
 
         // Получение данных из Intent
         cartItems = (List<CartItem>) getIntent().getSerializableExtra("cart_items");
@@ -85,7 +88,22 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private void setupListeners() {
         // Активация кнопки "Оформить заказ" при согласии с условиями
-        termsCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> checkoutButton.setEnabled(isChecked));
+        termsCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            checkoutButton.setEnabled(isChecked);
+            if (!isChecked) {
+                Log.d(TAG, "Галочка снята, кнопка отключена");
+            }
+        });
+
+        // Уведомление при попытке нажать неактивную кнопку
+        checkoutButton.setOnClickListener(v -> {
+            if (!checkoutButton.isEnabled()) {
+                Toast.makeText(this, "Пожалуйста, согласитесь с условиями использования", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Попытка нажать неактивную кнопку 'Оформить заказ'");
+            } else {
+                checkoutOrder();
+            }
+        });
 
         // Обновление комиссии при выборе способа оплаты
         paymentMethodGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -96,9 +114,6 @@ public class CheckoutActivity extends AppCompatActivity {
         // Инициализация комиссии для выбранного по умолчанию метода
         int initialCheckedId = paymentMethodGroup.getCheckedRadioButtonId();
         updateCommissionAndTotal(calculateTotalPrice(cartItems), initialCheckedId);
-
-        // Оформление заказа
-        checkoutButton.setOnClickListener(v -> checkoutOrder());
     }
 
     private void updateUI(int totalPrice) {

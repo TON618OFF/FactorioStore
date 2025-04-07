@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#4A4A4A">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Администратор?"
+        android:textColor="#D9D9D9"
+        android:textSize="16sp"/>
+
+    <Spinner
+        android:id="@+id/is_admin_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#5E6D70"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/save_rights_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Сохранить"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#B87333"
+        android:layout_marginTop="16dp"/>
+</LinearLayout>

@@ -1,7 +1,7 @@
 package com.example.factorio;
 
 import android.os.Bundle;
-import android.view.View;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -13,6 +13,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.Set;
 
 public class CategoryProductsActivity extends AppCompatActivity {
 
+    private static final String TAG = "CategoryProductsActivity";
     private RecyclerView categoryProductsRecyclerView;
     private TextView categoryTitle;
     private FloatingActionButton backFab;
@@ -31,7 +33,7 @@ public class CategoryProductsActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private String categoryId;
     private String categoryName;
-    private Set<String> favoriteIds; // Для хранения ID избранных товаров
+    private Set<String> favoriteIds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,15 +49,17 @@ public class CategoryProductsActivity extends AppCompatActivity {
         categoryId = getIntent().getStringExtra("categoryId");
         categoryName = getIntent().getStringExtra("categoryName");
 
+        Log.d(TAG, "Открыта категория: " + categoryName + ", ID: " + categoryId);
+
         productsList = new ArrayList<>();
         favoriteIds = new HashSet<>();
         productAdapter = new ProductAdapter(this, productsList);
 
-        categoryProductsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        categoryProductsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         categoryProductsRecyclerView.setAdapter(productAdapter);
 
         categoryTitle.setText(categoryName);
-        loadFavoritesAndProducts(); // Загружаем избранное и товары
+        loadFavoritesAndProducts();
 
         backFab.setOnClickListener(v -> finish());
     }
@@ -63,78 +67,80 @@ public class CategoryProductsActivity extends AppCompatActivity {
     private void loadFavoritesAndProducts() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
-            // Если пользователь не авторизован, просто загружаем товары без избранного
+            Log.d(TAG, "Пользователь не авторизован, загружаем товары без избранного");
             loadProductsByCategory(new HashSet<>());
             return;
         }
 
         String userId = user.getUid();
         db.collection("users").document(userId).collection("favorites")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        favoriteIds.clear();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
+                .addSnapshotListener((snapshot, e) -> {
+                    if (e != null) {
+                        Log.e(TAG, "Ошибка загрузки избранного: " + e.getMessage());
+                        Toast.makeText(this, "Ошибка загрузки избранного: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        loadProductsByCategory(new HashSet<>());
+                        return;
+                    }
+                    favoriteIds.clear();
+                    if (snapshot != null) {
+                        for (QueryDocumentSnapshot document : snapshot) {
                             String productId = document.getString("productId");
                             if (productId != null) {
                                 favoriteIds.add(productId);
                             }
                         }
-                        loadProductsByCategory(favoriteIds); // Передаём список избранных ID
-                    } else {
-                        Toast.makeText(this, "Ошибка загрузки избранного: " + task.getException(), Toast.LENGTH_SHORT).show();
-                        loadProductsByCategory(new HashSet<>()); // Загружаем без избранного при ошибке
+                        Log.d(TAG, "Избранное загружено: " + favoriteIds.size() + " элементов");
                     }
+                    loadProductsByCategory(favoriteIds);
                 });
     }
 
     private void loadProductsByCategory(Set<String> favoriteIds) {
         if ("all".equals(categoryId)) {
             db.collection("products")
-                    .get()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            productsList.clear();
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                String name = document.getString("name");
-                                String description = document.getString("description");
-                                Long priceLong = document.getLong("price");
-                                String imageUrl = document.getString("imageUrl");
-                                String categoryId = document.getString("category");
-                                int quantity = document.getLong("quantity").intValue();
-                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                    String catName = categoryName.equals("Все категории") ? "Без категории" : categoryName;
-                                    Product product = new Product(name, description, priceLong.intValue(), imageUrl, document.getId(), categoryId, catName, quantity);
-                                    product.setFavorite(favoriteIds.contains(document.getId())); // Устанавливаем статус избранного
-                                    productsList.add(product);
-                                }
-                            }
-                            productAdapter.notifyDataSetChanged();
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .addSnapshotListener((snapshot, e) -> {
+                        if (e != null) {
+                            Log.e(TAG, "Ошибка загрузки всех товаров: " + e.getMessage());
+                            Toast.makeText(this, "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            return;
                         }
+                        processProducts(snapshot, favoriteIds);
                     });
         } else {
             db.collection("products")
                     .whereEqualTo("category", categoryId)
-                    .get()
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            productsList.clear();
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                String name = document.getString("name");
-                                String description = document.getString("description");
-                                Long priceLong = document.getLong("price");
-                                String imageUrl = document.getString("imageUrl");
-                                String categoryId = document.getString("category");
-                                int quantity = document.getLong("quantity").intValue();
-                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                    Product product = new Product(name, description, priceLong.intValue(), imageUrl, document.getId(), categoryId, categoryName, quantity);
-                                    product.setFavorite(favoriteIds.contains(document.getId())); // Устанавливаем статус избранного
-                                    productsList.add(product);
-                                }
-                            }
-                            productAdapter.notifyDataSetChanged();
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .addSnapshotListener((snapshot, e) -> {
+                        if (e != null) {
+                            Log.e(TAG, "Ошибка загрузки товаров для категории " + categoryId + ": " + e.getMessage());
+                            Toast.makeText(this, "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            return;
                         }
+                        processProducts(snapshot, favoriteIds);
                     });
+        }
+    }
+
+    private void processProducts(com.google.firebase.firestore.QuerySnapshot snapshot, Set<String> favoriteIds) {
+        productsList.clear();
+        if (snapshot != null) {
+            Log.d(TAG, "Получено товаров: " + snapshot.size());
+            for (QueryDocumentSnapshot document : snapshot) {
+                Product product = document.toObject(Product.class);
+                product.setId(document.getId());
+                product.setFavorite(favoriteIds.contains(product.getId()));
+                product.setCategoryName(categoryName);
+                productsList.add(product);
+                Log.d(TAG, "Товар добавлен: " + product.getName() + ", ID: " + product.getId());
+            }
+            productAdapter.notifyDataSetChanged();
+            if (productsList.isEmpty()) {
+                Log.w(TAG, "Список товаров пуст для категории: " + categoryId);
+                Toast.makeText(this, "Товаров в этой категории нет", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Log.w(TAG, "Snapshot равен null");
         }
     }
 }

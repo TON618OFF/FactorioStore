@@ -16,8 +16,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,14 +28,31 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
 
     private Context context;
     private List<Product> productList;
+    private List<String> categoryNames;
+    private List<Category> categories; // Список категорий
     private FirebaseFirestore db;
-    private String[] categoryNames;
 
-    public AdminProductAdapter(Context context, List<Product> productList, String[] categoryNames) {
+    public AdminProductAdapter(Context context, List<Product> productList, List<Category> categories) {
         this.context = context;
         this.productList = productList;
+        this.categories = categories;
+        this.categoryNames = getCategoryNames();
         this.db = FirebaseFirestore.getInstance();
-        this.categoryNames = categoryNames;
+    }
+
+    // Изменяем модификатор доступа на public
+    public List<String> getCategoryNames() {
+        List<String> names = new ArrayList<>();
+        for (Category category : categories) {
+            names.add(category.getName());
+        }
+        return names;
+    }
+
+    public void updateCategories(List<Category> newCategories) {
+        this.categories = newCategories;
+        this.categoryNames = getCategoryNames();
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -55,8 +74,7 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
     }
 
     class ProductViewHolder extends RecyclerView.ViewHolder {
-        private TextView nameText, priceText, imageUrlText, descriptionText, quantityText;
-        private TextView categoryText;
+        private TextView nameText, priceText, imageUrlText, descriptionText, categoryText, quantityText;
         private Button updateButton, deleteButton;
 
         public ProductViewHolder(@NonNull View itemView) {
@@ -102,19 +120,17 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
             descriptionInput.setText(product.getDescription());
             quantityInput.setText(String.valueOf(product.getQuantity()));
 
-            // Настройка выпадающего списка категорий
             ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, categoryNames);
             categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             categorySpinner.setAdapter(categoryAdapter);
-
-            // Устанавливаем текущую категорию
             int currentCategoryIndex = -1;
-            try {
-                currentCategoryIndex = Integer.parseInt(product.getCategory());
-            } catch (NumberFormatException e) {
-                currentCategoryIndex = 0; // По умолчанию "Космос"
+            for (int i = 0; i < categories.size(); i++) {
+                if (categories.get(i).getId().equals(product.getCategory())) {
+                    currentCategoryIndex = i;
+                    break;
+                }
             }
-            if (currentCategoryIndex >= 0 && currentCategoryIndex < categoryNames.length) {
+            if (currentCategoryIndex != -1) {
                 categorySpinner.setSelection(currentCategoryIndex);
             }
 
@@ -125,8 +141,8 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                 String priceStr = priceInput.getText().toString().trim();
                 String imageUrl = imageUrlInput.getText().toString().trim();
                 String description = descriptionInput.getText().toString().trim();
-                int selectedCategoryIndex = categorySpinner.getSelectedItemPosition();
-                String categoryId = String.valueOf(selectedCategoryIndex); // Сохраняем числовой ID
+                int categoryIndex = categorySpinner.getSelectedItemPosition();
+                String categoryId = categories.get(categoryIndex).getId();
                 String quantityStr = quantityInput.getText().toString().trim();
 
                 if (name.isEmpty() || priceStr.isEmpty() || imageUrl.isEmpty() || description.isEmpty() || quantityStr.isEmpty()) {
@@ -138,6 +154,10 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                 try {
                     price = Integer.parseInt(priceStr);
                     quantity = Integer.parseInt(quantityStr);
+                    if (price <= 0) {
+                        Toast.makeText(context, "Цена должна быть больше 0", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                 } catch (NumberFormatException e) {
                     Toast.makeText(context, "Цена и количество должны быть числами", Toast.LENGTH_SHORT).show();
                     return;
@@ -148,8 +168,9 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                 productData.put("price", price);
                 productData.put("imageUrl", imageUrl);
                 productData.put("description", description);
-                productData.put("category", categoryId); // Сохраняем числовой ID
+                productData.put("category", categoryId);
                 productData.put("quantity", quantity);
+                productData.put("timestamp", FieldValue.serverTimestamp());
 
                 db.collection("products").document(product.getId())
                         .set(productData)
@@ -159,9 +180,9 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                             product.setImageUrl(imageUrl);
                             product.setDescription(description);
                             product.setCategory(categoryId);
-                            product.setCategoryName(categoryNames[selectedCategoryIndex]);
+                            product.setCategoryName(categoryNames.get(categoryIndex));
                             product.setQuantity(quantity);
-                            notifyDataSetChanged();
+                            notifyItemChanged(getAdapterPosition());
                             Toast.makeText(context, "Товар обновлён", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                         })

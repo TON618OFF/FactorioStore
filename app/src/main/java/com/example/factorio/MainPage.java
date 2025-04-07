@@ -4,6 +4,7 @@ import static android.app.Activity.RESULT_OK;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,6 +31,7 @@ import java.util.Map;
 
 public class MainPage extends Fragment {
 
+    private static final String TAG = "MainPage";
     private static final int FILTER_SORT_REQUEST = 2;
     private static final int FAVORITE_UPDATE_REQUEST = 1;
 
@@ -107,10 +109,12 @@ public class MainPage extends Fragment {
                             String name = document.getString("name");
                             if (name != null) {
                                 categoryNames.put(document.getId(), name);
+                                Log.d(TAG, "Категория загружена: " + name + ", ID: " + document.getId());
                             }
                         }
-                        loadProductsFromFirestore(); // Загружаем товары только после категорий
+                        loadProductsFromFirestore();
                     } else {
+                        Log.e(TAG, "Ошибка загрузки категорий: " + task.getException());
                         Toast.makeText(getContext(), "Ошибка загрузки категорий: " + task.getException(), Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -125,7 +129,7 @@ public class MainPage extends Fragment {
 
         String userId = user.getUid();
         db.collection("users").document(userId).collection("favorites")
-                .get() // Заменяем addSnapshotListener на get для одноразовой загрузки
+                .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         List<String> favoriteIds = new ArrayList<>();
@@ -135,8 +139,10 @@ public class MainPage extends Fragment {
                                 favoriteIds.add(productId);
                             }
                         }
+                        Log.d(TAG, "Избранное загружено: " + favoriteIds.size() + " элементов");
                         fetchProducts(favoriteIds);
                     } else {
+                        Log.e(TAG, "Ошибка загрузки избранного: " + task.getException());
                         Toast.makeText(getContext(), "Ошибка загрузки избранного: " + task.getException(), Toast.LENGTH_SHORT).show();
                         fetchProducts(new ArrayList<>());
                     }
@@ -145,32 +151,30 @@ public class MainPage extends Fragment {
 
     private void fetchProducts(List<String> favoriteIds) {
         db.collection("products")
-                .get() // Заменяем addSnapshotListener на get для одноразовой загрузки
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        if (productsList.isEmpty()) { // Загружаем только при пустом списке
-                            productsList.clear();
-                            filteredList.clear();
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                String name = document.getString("name");
-                                String description = document.getString("description");
-                                Long priceLong = document.getLong("price");
-                                String imageUrl = document.getString("imageUrl");
-                                String categoryId = document.getString("category");
-                                Integer quantity = document.getLong("quantity").intValue();
-                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                    int price = priceLong.intValue();
-                                    String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
-                                    boolean isFavorite = favoriteIds.contains(document.getId());
-                                    Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity);
-                                    product.setFavorite(isFavorite);
-                                    productsList.add(product);
-                                }
+                .addSnapshotListener((snapshot, e) -> { // Возвращаем addSnapshotListener для обновлений в реальном времени
+                    if (e != null) {
+                        Log.e(TAG, "Ошибка загрузки товаров: " + e.getMessage());
+                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (snapshot != null) {
+                        productsList.clear();
+                        filteredList.clear();
+                        Log.d(TAG, "Получено товаров: " + snapshot.size());
+                        for (QueryDocumentSnapshot document : snapshot) {
+                            Product product = document.toObject(Product.class); // Используем toObject для автоматической десериализации
+                            if (product != null) {
+                                product.setId(document.getId());
+                                product.setFavorite(favoriteIds.contains(document.getId()));
+                                String categoryName = categoryNames.getOrDefault(product.getCategory(), "Без категории");
+                                product.setCategoryName(categoryName);
+                                productsList.add(product);
+                                Log.d(TAG, "Товар добавлен: " + product.getName() + ", ID: " + product.getId());
                             }
-                            applyFiltersAndSort();
                         }
+                        applyFiltersAndSort();
                     } else {
-                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + task.getException(), Toast.LENGTH_SHORT).show();
+                        Log.w(TAG, "Snapshot равен null");
                     }
                 });
     }
@@ -221,18 +225,24 @@ public class MainPage extends Fragment {
             }
         }
 
+        // Сортировка
         if ("asc".equals(priceSort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getPrice));
         } else if ("desc".equals(priceSort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getPrice(), p1.getPrice()));
-        } else if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+        } else if ("asc".equals(quantitySort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getQuantity));
-        } else if ("desc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+        } else if ("desc".equals(quantitySort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getQuantity(), p1.getQuantity()));
         } else {
-            Collections.shuffle(filteredList);
+            // По умолчанию сортируем по timestamp (если он есть)
+            Collections.sort(filteredList, (p1, p2) -> {
+                if (p1.getTimestamp() == null || p2.getTimestamp() == null) return 0;
+                return p2.getTimestamp().compareTo(p1.getTimestamp()); // Новые товары сверху
+            });
         }
 
         productAdapter.notifyDataSetChanged();
+        Log.d(TAG, "Фильтрация и сортировка завершены, товаров в filteredList: " + filteredList.size());
     }
 }

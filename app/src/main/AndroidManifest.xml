@@ -41,7 +41,10 @@
         <activity android:name=".CheckoutActivity"/>
         <activity android:name=".FilterSortActivity" />
         <activity android:name=".OrdersHistoryActivity"/>
-        <activity android:name=".AdminPanelActivity"/>
+        <activity android:name=".AdminDashboardActivity"/>
+        <activity android:name=".AdminCategoriesActivity"/>
+        <activity android:name=".AdminProductsActivity"/>
+        <activity android:name=".AdminUsersActivity"/>
     </application>
 
 </manifest>

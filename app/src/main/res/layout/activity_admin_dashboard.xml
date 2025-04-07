@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#2F2F2F">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Панель администратора"
+        android:textSize="24sp"
+        android:textColor="@color/white"
+        android:layout_gravity="center"
+        android:paddingBottom="20dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/products_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Товары"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#B87333"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/categories_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Категории"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#B87333"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/users_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Пользователи"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#B87333"/>
+</LinearLayout>

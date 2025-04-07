@@ -130,34 +130,36 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // Проверка уникальности никнейма
-        db.collection("users")
-                .whereEqualTo("nickname", nickname)
-                .get()
-                .addOnCompleteListener(nicknameTask -> {
-                    if (nicknameTask.isSuccessful()) {
-                        QuerySnapshot snapshot = nicknameTask.getResult();
-                        if (!snapshot.isEmpty()) {
-                            nicknameLayout.setError("Этот никнейм уже занят");
-                        } else {
-                            // Проверка зарегистрированной почты
-                            auth.fetchSignInMethodsForEmail(email)
-                                    .addOnCompleteListener(emailTask -> {
-                                        if (emailTask.isSuccessful()) {
-                                            if (emailTask.getResult().getSignInMethods().isEmpty()) {
-                                                // Почта не зарегистрирована, отправляем код
-                                                sendVerificationCode(email, password, nickname, birthday, address);
-                                            } else {
-                                                // Почта уже зарегистрирована
-                                                emailLayout.setError("Эта почта уже зарегистрирована. Пожалуйста, войдите в систему.");
-                                            }
-                                        } else {
-                                            Toast.makeText(RegisterActivity.this, "Ошибка проверки почты: " + emailTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
+        // Сначала проверяем почту в Firebase Authentication
+        auth.fetchSignInMethodsForEmail(email)
+                .addOnCompleteListener(emailTask -> {
+                    if (emailTask.isSuccessful()) {
+                        if (!emailTask.getResult().getSignInMethods().isEmpty()) {
+                            // Почта уже зарегистрирована
+                            emailLayout.setError("Эта почта уже зарегистрирована");
+                            Toast.makeText(this, "Эта почта уже используется. Пожалуйста, войдите в систему.", Toast.LENGTH_LONG).show();
+                            return;
                         }
+
+                        // Если почта свободна, проверяем никнейм в Firestore
+                        db.collection("users")
+                                .whereEqualTo("nickname", nickname)
+                                .get()
+                                .addOnCompleteListener(nicknameTask -> {
+                                    if (nicknameTask.isSuccessful()) {
+                                        QuerySnapshot snapshot = nicknameTask.getResult();
+                                        if (!snapshot.isEmpty()) {
+                                            nicknameLayout.setError("Этот никнейм уже занят");
+                                        } else {
+                                            // Никнейм и почта свободны, отправляем код верификации
+                                            sendVerificationCode(email, password, nickname, birthday, address);
+                                        }
+                                    } else {
+                                        Toast.makeText(this, "Ошибка проверки никнейма: " + nicknameTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                                    }
+                                });
                     } else {
-                        Toast.makeText(this, "Ошибка проверки никнейма: " + nicknameTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Ошибка проверки почты: " + emailTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -253,12 +255,14 @@ public class RegisterActivity extends AppCompatActivity {
                                     .addOnSuccessListener(aVoid -> {
                                         Log.d(TAG, "Пользователь успешно зарегистрирован в Firestore: " + userId);
                                         Toast.makeText(this, "Регистрация успешна", Toast.LENGTH_SHORT).show();
-                                        startActivity(new Intent(this, ProfileActivity.class));
+                                        startActivity(new Intent(this, MainActivity.class)); // Переход на главное окно
                                         finish();
                                     })
                                     .addOnFailureListener(e -> {
                                         Log.e(TAG, "Ошибка записи в Firestore: " + e.getMessage(), e);
                                         Toast.makeText(this, "Ошибка регистрации: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                        // Удаляем пользователя из Authentication, если Firestore не удалось записать
+                                        user.delete();
                                     });
                         } else {
                             Log.e(TAG, "FirebaseUser is null после успешной регистрации");

@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -29,7 +31,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private TextInputEditText emailText, nicknameText, birthDateText, addressText, passwordText;
     private TextInputLayout passwordLayout, addressLayout, birthDateLayout, nicknameLayout;
-    private MaterialButton logoutButton, favoritesButton, ordersHistoryButton, adminPanelButton;
+    private MaterialButton logoutButton, favoritesButton, ordersHistoryButton, adminPanelButton, deleteAccountButton;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private Calendar calendar;
@@ -63,6 +65,7 @@ public class ProfileActivity extends AppCompatActivity {
         favoritesButton = findViewById(R.id.favorites_button);
         ordersHistoryButton = findViewById(R.id.orders_history_button);
         adminPanelButton = findViewById(R.id.admin_panel_button);
+        deleteAccountButton = findViewById(R.id.delete_account_button);
     }
 
     private void setupListeners() {
@@ -73,7 +76,8 @@ public class ProfileActivity extends AppCompatActivity {
         logoutButton.setOnClickListener(v -> logout());
         favoritesButton.setOnClickListener(v -> goToFavorites());
         ordersHistoryButton.setOnClickListener(v -> goToOrdersHistory());
-        adminPanelButton.setOnClickListener(v -> goToAdminPanel()); // Слушатель для кнопки админки
+        adminPanelButton.setOnClickListener(v -> goToAdminPanel());
+        deleteAccountButton.setOnClickListener(v -> showDeleteAccountDialog());
     }
 
     private void loadUserProfile() {
@@ -90,14 +94,12 @@ public class ProfileActivity extends AppCompatActivity {
                             addressText.setText(document.getString("address"));
                             passwordText.setText("********");
 
-                            // Проверка isAdmin
                             Boolean isAdmin = document.getBoolean("isAdmin");
                             Log.d(TAG, "isAdmin для пользователя " + userId + ": " + isAdmin);
                             if (isAdmin != null && isAdmin) {
                                 adminPanelButton.setVisibility(View.VISIBLE);
                             } else {
                                 adminPanelButton.setVisibility(View.GONE);
-                                // Если isAdmin отсутствует или false, добавляем его как false
                                 if (isAdmin == null) {
                                     db.collection("users").document(userId)
                                             .update("isAdmin", false)
@@ -122,6 +124,83 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    private void showDeleteAccountDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Удаление аккаунта");
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_delete_account, null);
+        builder.setView(dialogView);
+
+        TextInputEditText passwordInput = dialogView.findViewById(R.id.password_input);
+
+        builder.setPositiveButton("Удалить", null); // Устанавливаем null, чтобы перехватить клик вручную
+        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.dismiss());
+        builder.setCancelable(true);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        // Перехватываем кнопку "Удалить"
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String password = passwordInput.getText().toString().trim();
+            if (password.isEmpty()) {
+                Toast.makeText(this, "Введите пароль для подтверждения", Toast.LENGTH_SHORT).show();
+            } else {
+                deleteAccountWithReauth(password, dialog);
+            }
+        });
+    }
+
+    private void deleteAccountWithReauth(String password, AlertDialog dialog) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user != null) {
+            String email = user.getEmail();
+            if (email == null) {
+                Toast.makeText(this, "Email не найден", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            AuthCredential credential = EmailAuthProvider.getCredential(email, password);
+            user.reauthenticate(credential)
+                    .addOnSuccessListener(aVoid -> {
+                        String userId = user.getUid();
+
+                        // Удаление данных из Firestore
+                        db.collection("users").document(userId)
+                                .delete()
+                                .addOnSuccessListener(aVoid1 -> {
+                                    Log.d(TAG, "Данные пользователя удалены из Firestore: " + userId);
+                                    // Удаление аккаунта из Authentication
+                                    user.delete()
+                                            .addOnSuccessListener(aVoid2 -> {
+                                                Log.d(TAG, "Аккаунт удалён из Authentication: " + userId);
+                                                Toast.makeText(this, "Аккаунт успешно удалён", Toast.LENGTH_SHORT).show();
+                                                dialog.dismiss();
+                                                Intent intent = new Intent(this, LoginActivity.class);
+                                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                                startActivity(intent);
+                                                finish();
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Log.e(TAG, "Ошибка удаления аккаунта из Authentication: " + e.getMessage());
+                                                Toast.makeText(this, "Ошибка удаления аккаунта: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                            });
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Ошибка удаления данных из Firestore: " + e.getMessage());
+                                    Toast.makeText(this, "Ошибка удаления данных: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Ошибка повторной аутентификации: " + e.getMessage());
+                        Toast.makeText(this, "Неверный пароль: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+        } else {
+            Toast.makeText(this, "Пользователь не авторизован", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }
+    }
+
+    // Остальные методы остаются без изменений
     private void showDatePickerDialog() {
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 this,
@@ -329,7 +408,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void goToAdminPanel() {
-        Intent intent = new Intent(this, AdminPanelActivity.class);
+        Intent intent = new Intent(this, AdminDashboardActivity.class);
         startActivity(intent);
     }
 }
