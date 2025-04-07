@@ -37,7 +37,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private Button checkoutButton;
     private CheckBox termsCheckbox;
     private List<CartItem> cartItems;
-    private CartAdapter cartAdapter;
+    private CheckoutAdapter checkoutAdapter; // Новый адаптер
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
@@ -57,10 +57,10 @@ public class CheckoutActivity extends AppCompatActivity {
         cartItems = (List<CartItem>) getIntent().getSerializableExtra("cart_items");
         if (cartItems == null) cartItems = new ArrayList<>();
 
-        // Настройка RecyclerView
-        cartAdapter = new CartAdapter(cartItems, null);
+        // Настройка RecyclerView с новым адаптером
+        checkoutAdapter = new CheckoutAdapter(cartItems);
         checkoutRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        checkoutRecyclerView.setAdapter(cartAdapter);
+        checkoutRecyclerView.setAdapter(checkoutAdapter);
 
         // Установка начальных значений
         updateUI(calculateTotalPrice(cartItems));
@@ -193,7 +193,7 @@ public class CheckoutActivity extends AppCompatActivity {
         resultIntent.putExtra("order_id", orderId);
         resultIntent.putExtra("email", email);
         resultIntent.putExtra("cart_items", new ArrayList<>(cartItems));
-        resultIntent.putExtra("commission", commission); // Передаём комиссию
+        resultIntent.putExtra("commission", commission);
         setResult(RESULT_OK, resultIntent);
 
         Toast.makeText(this, "Заказ оформлен! ID: " + orderId, Toast.LENGTH_SHORT).show();

@@ -1,5 +1,7 @@
 package com.example.factorio;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -51,7 +53,7 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         holder.productCategory.setText("Категория: " + product.getCategoryName());
         holder.productDescription.setText(product.getDescription());
         holder.productPrice.setText(String.format("%d руб.", product.getPrice()));
-        holder.productQuantity.setText("В наличии: " + product.getQuantity()); // Отображаем количество
+        holder.productQuantity.setText("В наличии: " + product.getQuantity());
         Glide.with(context)
                 .load(product.getImageUrl())
                 .placeholder(R.drawable.ic_placeholder)
@@ -67,13 +69,14 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                 return;
             }
 
-            product.setFavorite(!product.isFavorite());
-            holder.favoriteIcon.setImageResource(product.isFavorite() ? R.drawable.favorite_on : R.drawable.favorite);
-            String message = product.isFavorite() ? "Добавлено в избранное" : "Удалено из избранного";
+            boolean newFavoriteStatus = !product.isFavorite();
+            product.setFavorite(newFavoriteStatus);
+            holder.favoriteIcon.setImageResource(newFavoriteStatus ? R.drawable.favorite_on : R.drawable.favorite);
+            String message = newFavoriteStatus ? "Добавлено в избранное" : "Удалено из избранного";
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
 
             String userId = user.getUid();
-            if (product.isFavorite()) {
+            if (newFavoriteStatus) {
                 Map<String, Object> favoriteData = new HashMap<>();
                 favoriteData.put("productId", product.getId());
                 favoriteData.put("addedAt", System.currentTimeMillis());
@@ -83,12 +86,18 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                 db.collection("users").document(userId).collection("favorites").document(product.getId())
                         .delete();
             }
+
+            Intent resultIntent = new Intent();
+            resultIntent.putExtra("productId", product.getId());
+            resultIntent.putExtra("isFavorite", newFavoriteStatus);
+            if (context instanceof Activity) {
+                ((Activity) context).setResult(RESULT_OK, resultIntent);
+            }
         });
 
-        // Управление кнопкой "Купить"
         if (product.getQuantity() > 0) {
             holder.buyButton.setText("Купить");
-            holder.buyButton.setEnabled(true); // Кнопка активна
+            holder.buyButton.setEnabled(true);
             holder.buyButton.setBackgroundTintList(context.getResources().getColorStateList(R.color.circuit_green));
             holder.buyButton.setOnClickListener(v -> {
                 CartItem cartItem = new CartItem(
@@ -104,7 +113,7 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         } else {
             holder.buyButton.setText("Нет в наличии");
             holder.buyButton.setTextColor(context.getResources().getColorStateList(R.color.white));
-            holder.buyButton.setEnabled(false); // Кнопка неактивна
+            holder.buyButton.setEnabled(false);
             holder.buyButton.setBackgroundTintList(context.getResources().getColorStateList(R.color.coal_gray));
         }
 
@@ -116,22 +125,6 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                 ((Activity) context).startActivityForResult(intent, 1);
             } else {
                 context.startActivity(intent);
-            }
-        });
-
-        holder.buyButton.setOnClickListener(v -> {
-            if (product.getQuantity() > 0) {
-                CartItem cartItem = new CartItem(
-                        product.getId(),
-                        product.getName(),
-                        product.getPrice(),
-                        1,
-                        product.getImageUrl()
-                );
-                CartManager.getInstance().addToCart(cartItem);
-                Toast.makeText(context, "Добавлено в корзину: " + product.getName(), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(context, "Товара нет в наличии", Toast.LENGTH_SHORT).show();
             }
         });
     }

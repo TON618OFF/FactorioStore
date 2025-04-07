@@ -31,6 +31,7 @@ import java.util.Map;
 public class MainPage extends Fragment {
 
     private static final int FILTER_SORT_REQUEST = 2;
+    private static final int FAVORITE_UPDATE_REQUEST = 1;
 
     private RecyclerView productsRecyclerView;
     private ProductAdapter productAdapter;
@@ -39,9 +40,9 @@ public class MainPage extends Fragment {
     private List<Product> filteredList;
     private Map<String, String> categoryNames;
     private String currentQuery = "";
-    private boolean inStockFilter = false; // Фильтр "В наличии"
-    private String priceSort = "none"; // "asc", "desc", "none"
-    private String quantitySort = "none"; // "asc", "desc", "none"
+    private boolean inStockFilter = false;
+    private String priceSort = "none";
+    private String quantitySort = "none";
 
     @Nullable
     @Override
@@ -70,16 +71,10 @@ public class MainPage extends Fragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
+        if (requestCode == FAVORITE_UPDATE_REQUEST && resultCode == RESULT_OK && data != null) {
             String productId = data.getStringExtra("productId");
             boolean isFavorite = data.getBooleanExtra("isFavorite", false);
-            for (Product product : productsList) {
-                if (product.getId().equals(productId)) {
-                    product.setFavorite(isFavorite);
-                    break;
-                }
-            }
-            applyFiltersAndSort();
+            updateFavoriteStatus(productId, isFavorite);
         } else if (requestCode == FILTER_SORT_REQUEST && resultCode == RESULT_OK && data != null) {
             inStockFilter = data.getBooleanExtra("inStock", false);
             priceSort = data.getStringExtra("priceSort");
@@ -114,7 +109,7 @@ public class MainPage extends Fragment {
                                 categoryNames.put(document.getId(), name);
                             }
                         }
-                        loadProductsFromFirestore();
+                        loadProductsFromFirestore(); // Загружаем товары только после категорий
                     } else {
                         Toast.makeText(getContext(), "Ошибка загрузки категорий: " + task.getException(), Toast.LENGTH_SHORT).show();
                     }
@@ -130,53 +125,52 @@ public class MainPage extends Fragment {
 
         String userId = user.getUid();
         db.collection("users").document(userId).collection("favorites")
-                .addSnapshotListener((favoritesSnapshot, e) -> {
-                    if (e != null) {
-                        Toast.makeText(getContext(), "Ошибка загрузки избранного: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    List<String> favoriteIds = new ArrayList<>();
-                    if (favoritesSnapshot != null) {
-                        for (QueryDocumentSnapshot doc : favoritesSnapshot) {
+                .get() // Заменяем addSnapshotListener на get для одноразовой загрузки
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        List<String> favoriteIds = new ArrayList<>();
+                        for (QueryDocumentSnapshot doc : task.getResult()) {
                             String productId = doc.getString("productId");
                             if (productId != null) {
                                 favoriteIds.add(productId);
                             }
                         }
+                        fetchProducts(favoriteIds);
+                    } else {
+                        Toast.makeText(getContext(), "Ошибка загрузки избранного: " + task.getException(), Toast.LENGTH_SHORT).show();
+                        fetchProducts(new ArrayList<>());
                     }
-                    fetchProducts(favoriteIds);
                 });
     }
 
     private void fetchProducts(List<String> favoriteIds) {
         db.collection("products")
-                .addSnapshotListener((productsSnapshot, error) -> {
-                    if (error != null) {
-                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    if (productsSnapshot != null) {
-                        productsList.clear();
-                        filteredList.clear();
-                        for (QueryDocumentSnapshot document : productsSnapshot) {
-                            String name = document.getString("name");
-                            String description = document.getString("description");
-                            Long priceLong = document.getLong("price");
-                            String imageUrl = document.getString("imageUrl");
-                            String categoryId = document.getString("category");
-                            Integer quantity = document.getLong("quantity").intValue();
-                            if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
-                                int price = priceLong.intValue();
-                                String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
-                                boolean isFavorite = favoriteIds.contains(document.getId());
-                                Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity);
-                                product.setFavorite(isFavorite);
-                                productsList.add(product);
+                .get() // Заменяем addSnapshotListener на get для одноразовой загрузки
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        if (productsList.isEmpty()) { // Загружаем только при пустом списке
+                            productsList.clear();
+                            filteredList.clear();
+                            for (QueryDocumentSnapshot document : task.getResult()) {
+                                String name = document.getString("name");
+                                String description = document.getString("description");
+                                Long priceLong = document.getLong("price");
+                                String imageUrl = document.getString("imageUrl");
+                                String categoryId = document.getString("category");
+                                Integer quantity = document.getLong("quantity").intValue();
+                                if (name != null && description != null && priceLong != null && imageUrl != null && categoryId != null) {
+                                    int price = priceLong.intValue();
+                                    String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
+                                    boolean isFavorite = favoriteIds.contains(document.getId());
+                                    Product product = new Product(name, description, price, imageUrl, document.getId(), categoryId, categoryName, quantity);
+                                    product.setFavorite(isFavorite);
+                                    productsList.add(product);
+                                }
                             }
+                            applyFiltersAndSort();
                         }
-                        applyFiltersAndSort();
+                    } else {
+                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + task.getException(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -186,11 +180,27 @@ public class MainPage extends Fragment {
         applyFiltersAndSort();
     }
 
+    private void updateFavoriteStatus(String productId, boolean isFavorite) {
+        for (Product product : productsList) {
+            if (product.getId().equals(productId)) {
+                product.setFavorite(isFavorite);
+                break;
+            }
+        }
+        for (int i = 0; i < filteredList.size(); i++) {
+            Product product = filteredList.get(i);
+            if (product.getId().equals(productId)) {
+                product.setFavorite(isFavorite);
+                productAdapter.notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
     private void applyFiltersAndSort() {
         filteredList.clear();
         String lowerQuery = currentQuery.trim().toLowerCase();
 
-        // Фильтрация
         for (Product product : productsList) {
             boolean matchesQuery = lowerQuery.isEmpty();
             if (!lowerQuery.isEmpty()) {
@@ -211,20 +221,15 @@ public class MainPage extends Fragment {
             }
         }
 
-        // Сортировка по цене (если выбрана)
         if ("asc".equals(priceSort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getPrice));
         } else if ("desc".equals(priceSort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getPrice(), p1.getPrice()));
-        }
-        // Сортировка по количеству (если выбрана и нет сортировки по цене)
-        else if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
+        } else if ("asc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
             Collections.sort(filteredList, Comparator.comparingInt(Product::getQuantity));
         } else if ("desc".equals(quantitySort) && !"asc".equals(priceSort) && !"desc".equals(priceSort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getQuantity(), p1.getQuantity()));
-        }
-        // Если нет сортировки, рандомизируем список
-        else {
+        } else {
             Collections.shuffle(filteredList);
         }
 
