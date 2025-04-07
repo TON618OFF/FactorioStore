@@ -15,17 +15,39 @@
         android:orientation="vertical"
         android:padding="12dp">
 
-        <!-- Почта пользователя -->
-        <TextView
-            android:id="@+id/review_user_nickname"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="example"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/white"/>
+            android:orientation="horizontal">
 
-        <!-- Рейтинг -->
+            <TextView
+                android:id="@+id/review_user_nickname"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="example"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"/>
+
+            <ImageView
+                android:id="@+id/edit_review_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/edit_pen"
+                android:contentDescription="Редактировать отзыв"
+                android:visibility="gone"/>
+
+            <ImageView
+                android:id="@+id/delete_review_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/trash"
+                android:contentDescription="Удалить отзыв"
+                android:visibility="gone"/>
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -47,10 +69,8 @@
                 android:text="5"
                 android:textSize="16sp"
                 android:textColor="@color/hazard_yellow"/>
-
         </LinearLayout>
 
-        <!-- Текст отзыва -->
         <TextView
             android:id="@+id/review_text"
             android:layout_width="match_parent"
@@ -59,6 +79,5 @@
             android:textSize="14sp"
             android:textColor="@color/smoke_white"
             android:layout_marginTop="8dp"/>
-
     </LinearLayout>
 </androidx.cardview.widget.CardView>

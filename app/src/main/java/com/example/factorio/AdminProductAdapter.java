@@ -110,7 +110,7 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
             // Устанавливаем текущую категорию
             int currentCategoryIndex = -1;
             try {
-                currentCategoryIndex = Integer.parseInt(product.getCategoryId());
+                currentCategoryIndex = Integer.parseInt(product.getCategory());
             } catch (NumberFormatException e) {
                 currentCategoryIndex = 0; // По умолчанию "Космос"
             }
@@ -158,7 +158,7 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                             product.setPrice(price);
                             product.setImageUrl(imageUrl);
                             product.setDescription(description);
-                            product.setCategoryId(categoryId);
+                            product.setCategory(categoryId);
                             product.setCategoryName(categoryNames[selectedCategoryIndex]);
                             product.setQuantity(quantity);
                             notifyDataSetChanged();

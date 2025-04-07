@@ -8,21 +8,20 @@ public class Product implements Serializable {
     private int price;
     private String imageUrl;
     private String id;
-    private String categoryId;
+    private String category; // Изменено с categoryId на category
     private String categoryName;
     private int quantity;
     private boolean isFavorite;
 
     public Product() {}
 
-    // Исправленный конструктор
-    public Product(String name, String description, int price, String imageUrl, String id, String categoryId, String categoryName, int quantity) {
+    public Product(String name, String description, int price, String imageUrl, String id, String category, String categoryName, int quantity) {
         this.name = name;
         this.description = description;
         this.price = price;
         this.imageUrl = imageUrl;
         this.id = id;
-        this.categoryId = categoryId;
+        this.category = category; // Используем category
         this.categoryName = categoryName;
         this.quantity = quantity;
         this.isFavorite = false;
@@ -39,8 +38,8 @@ public class Product implements Serializable {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
-    public String getCategoryId() { return categoryId; }
-    public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
+    public String getCategory() { return category; } // Изменено с getCategoryId
+    public void setCategory(String category) { this.category = category; } // Изменено с setCategoryId
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
     public int getQuantity() { return quantity; }

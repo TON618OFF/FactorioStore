@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/coal_black">
+
+    <EditText
+        android:id="@+id/edit_review_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Измените ваш отзыв"
+        android:textColor="@color/white"
+        android:textColorHint="@color/smoke_white"
+        android:backgroundTint="@color/coal_gray"
+        android:padding="12dp"
+        android:minHeight="100dp"
+        android:inputType="textMultiLine"/>
+
+    <RadioGroup
+        android:id="@+id/edit_rating_radio_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <RadioButton
+            android:id="@+id/edit_rating_1"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="1"
+            android:textColor="@color/hazard_yellow"
+            android:buttonTint="@color/hazard_yellow"/>
+
+        <RadioButton
+            android:id="@+id/edit_rating_2"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="2"
+            android:textColor="@color/hazard_yellow"
+            android:buttonTint="@color/hazard_yellow"/>
+
+        <RadioButton
+            android:id="@+id/edit_rating_3"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="3"
+            android:textColor="@color/hazard_yellow"
+            android:buttonTint="@color/hazard_yellow"/>
+
+        <RadioButton
+            android:id="@+id/edit_rating_4"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="4"
+            android:textColor="@color/hazard_yellow"
+            android:buttonTint="@color/hazard_yellow"/>
+
+        <RadioButton
+            android:id="@+id/edit_rating_5"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="5"
+            android:textColor="@color/hazard_yellow"
+            android:buttonTint="@color/hazard_yellow"
+            android:checked="true"/>
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/save_review_button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Сохранить"
+        android:textSize="16sp"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/oil_teal"
+        android:layout_marginTop="16dp"/>
+</LinearLayout>

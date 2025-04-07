@@ -76,7 +76,7 @@ public class AdminPanelActivity extends AppCompatActivity {
                             product.setImageUrl(doc.getString("imageUrl"));
                             product.setDescription(doc.getString("description"));
                             String categoryId = doc.getString("category");
-                            product.setCategoryId(categoryId);
+                            product.setCategory(categoryId);
                             // Устанавливаем текстовое название категории
                             try {
                                 int categoryIndex = Integer.parseInt(categoryId);

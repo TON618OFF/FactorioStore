@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.graphics.Paint;
 import android.graphics.pdf.PdfDocument;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -58,6 +60,7 @@ public class CartPageFragment extends Fragment {
     private Button checkoutButton;
     private CartAdapter cartAdapter;
     private CartManager cartManager;
+    private Handler mainHandler; // Handler для работы с главным потоком
 
     @Nullable
     @Override
@@ -74,6 +77,8 @@ public class CartPageFragment extends Fragment {
         cartAdapter = new CartAdapter(cartManager.getCartItems(), this::updateTotalPrice);
         cartRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         cartRecyclerView.setAdapter(cartAdapter);
+
+        mainHandler = new Handler(Looper.getMainLooper()); // Инициализация Handler для главного потока
 
         loadCart();
 
@@ -113,25 +118,30 @@ public class CartPageFragment extends Fragment {
                     File pdfFile = generatePdf(orderId, email, items, commission);
                     if (pdfFile.exists() && pdfFile.length() > 0) {
                         Log.i(TAG, "PDF файл успешно создан: " + pdfFile.getAbsolutePath() + ", размер: " + pdfFile.length());
-                        sendEmailWithPdf(email, orderId, pdfFile, commission, items); // Передаём items
-
-                        // Сохранение в историю заказов
+                        sendEmailWithPdf(email, orderId, pdfFile, commission, items);
                         saveOrderToHistory(orderId, email, items, commission);
 
-                        getActivity().runOnUiThread(() -> {
-                            Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
-                            cartManager.removeAllFromCart();
-                            updateUI();
-                        });
+                        // Безопасное обновление UI через Handler
+                        if (isAdded()) { // Проверяем, что фрагмент прикреплён
+                            mainHandler.post(() -> {
+                                Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
+                                cartManager.removeAllFromCart();
+                                updateUI();
+                            });
+                        }
                     } else {
                         Log.e(TAG, "PDF файл не существует или пуст: " + pdfFile.getAbsolutePath());
-                        getActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "Ошибка: PDF файл не создан", Toast.LENGTH_SHORT).show());
+                        if (isAdded()) {
+                            mainHandler.post(() ->
+                                    Toast.makeText(getContext(), "Ошибка: PDF файл не создан", Toast.LENGTH_SHORT).show());
+                        }
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Ошибка при отправке чека: " + e.getMessage(), e);
-                    getActivity().runOnUiThread(() ->
-                            Toast.makeText(getContext(), "Ошибка отправки чека", Toast.LENGTH_SHORT).show());
+                    if (isAdded()) {
+                        mainHandler.post(() ->
+                                Toast.makeText(getContext(), "Ошибка отправки чека", Toast.LENGTH_SHORT).show());
+                    }
                 }
             }).start();
         }
@@ -151,7 +161,7 @@ public class CartPageFragment extends Fragment {
         orderData.put("orderId", orderId);
         orderData.put("email", email);
         orderData.put("timestamp", FieldValue.serverTimestamp());
-        orderData.put("items", items); // Список объектов CartItem
+        orderData.put("items", items);
         orderData.put("subtotal", subtotal);
         orderData.put("commission", commission);
         orderData.put("totalWithCommission", totalWithCommission);
@@ -166,8 +176,10 @@ public class CartPageFragment extends Fragment {
 
     private void loadCart() {
         cartManager.loadCartFromFirestore(items -> {
-            cartAdapter.notifyDataSetChanged();
-            updateUI();
+            if (isAdded()) { // Проверяем, что фрагмент прикреплён
+                cartAdapter.notifyDataSetChanged();
+                updateUI();
+            }
         });
     }
 
@@ -189,7 +201,7 @@ public class CartPageFragment extends Fragment {
     }
 
     private File generatePdf(String orderId, String email, List<CartItem> items, int commission) throws IOException {
-        File pdfFile = new File(getContext().getCacheDir(), "receipt_" + orderId + ".pdf");
+        File pdfFile = new File(requireContext().getCacheDir(), "receipt_" + orderId + ".pdf");
         PdfDocument pdfDocument = new PdfDocument();
         PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
         PdfDocument.Page page = pdfDocument.startPage(pageInfo);
@@ -234,11 +246,9 @@ public class CartPageFragment extends Fragment {
         canvas.drawLine(20, yPosition, 575, yPosition, paint);
         yPosition += 20;
 
-        // Добавляем промежуточную сумму
         canvas.drawText("Промежуточная сумма: " + subtotal + " руб.", 300, yPosition, paint);
         yPosition += 20;
 
-        // Добавляем комиссию только если она больше 0
         int totalWithCommission = subtotal;
         if (commission > 0) {
             canvas.drawText("Комиссия: " + commission + " руб.", 300, yPosition, paint);
@@ -246,7 +256,6 @@ public class CartPageFragment extends Fragment {
             totalWithCommission = subtotal + commission;
         }
 
-        // Итог
         canvas.drawText("Итого: " + totalWithCommission + " руб.", 300, yPosition, paint);
 
         pdfDocument.finishPage(page);
@@ -283,7 +292,6 @@ public class CartPageFragment extends Fragment {
         int subtotal = calculateTotalPrice(items);
         int totalWithCommission = subtotal + (commission > 0 ? commission : 0);
 
-        // HTML-вёрстка письма
         String htmlContent = "<!DOCTYPE html>" +
                 "<html>" +
                 "<head>" +
@@ -346,33 +354,36 @@ public class CartPageFragment extends Fragment {
                 "</body>" +
                 "</html>";
 
-        // Создаём основной Multipart с подтипом "mixed"
         MimeMultipart multipart = new MimeMultipart("mixed");
 
-        // Добавляем HTML как первую часть
         MimeBodyPart htmlPart = new MimeBodyPart();
         htmlPart.setContent(htmlContent, "text/html; charset=utf-8");
         multipart.addBodyPart(htmlPart);
 
-        // Добавляем PDF как вторую часть
         MimeBodyPart attachmentPart = new MimeBodyPart();
         attachmentPart.attachFile(pdfFile);
-        attachmentPart.setFileName("receipt_" + orderId + ".pdf"); // Явно задаём имя файла
-        attachmentPart.setDisposition(MimeBodyPart.ATTACHMENT); // Указываем, что это вложение
+        attachmentPart.setFileName("receipt_" + orderId + ".pdf");
+        attachmentPart.setDisposition(MimeBodyPart.ATTACHMENT);
         multipart.addBodyPart(attachmentPart);
 
-        // Устанавливаем содержимое сообщения
         message.setContent(multipart);
 
         Log.i(TAG, "Попытка отправки email на " + email);
         Transport.send(message);
         Log.i(TAG, "Email успешно отправлен");
     }
+
     private int calculateTotalPrice(List<CartItem> items) {
         int totalPrice = 0;
         for (CartItem item : items) {
             totalPrice += item.getTotalPrice();
         }
         return totalPrice;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mainHandler.removeCallbacksAndMessages(null); // Очистка Handler при уничтожении
     }
 }
