@@ -28,6 +28,41 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AdminProductsActivity - активность для управления товарами в приложении.
+ *
+ * Основные функции:
+ * - Загрузка списка товаров и категорий из Firestore в реальном времени.
+ * - Добавление новых товаров через диалоговое окно.
+ * - Обновление списка товаров с поддержкой фильтрации по названию.
+ * - Использование RecyclerView для отображения списка товаров с адаптером AdminProductAdapter.
+ *
+ * Поля:
+ * - RecyclerView productsRecyclerView: Отображение списка товаров.
+ * - EditText searchProductsEditText: Поле для ввода поискового запроса.
+ * - MaterialButton addProductButton: Кнопка для добавления нового товара.
+ * - FirebaseFirestore db: База данных Firestore для взаимодействия с товарами и категориями.
+ * - AdminProductAdapter productAdapter: Адаптер для управления списком товаров.
+ * - List<Product> productList: Полный список товаров.
+ * - List<Category> categories: Полный список категорий.
+ * - ListenerRegistration productsListener: Слушатель изменений списка товаров в Firestore.
+ * - ListenerRegistration categoriesListener: Слушатель изменений списка категорий в Firestore.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка интерфейса и слушателей.
+ * - loadCategories(): Загрузка списка категорий из Firestore и обновление в адаптере.
+ * - loadProducts(): Загрузка списка товаров из Firestore и обновление в адаптере.
+ * - showAddProductDialog(): Отображение диалога для добавления нового товара.
+ * - onDestroy(): Очистка слушателей изменений при уничтожении активности.
+ *
+ * Логика:
+ * - Сначала загружаются категории, чтобы их можно было использовать при добавлении и отображении товаров.
+ * - После загрузки категорий вызывается метод loadProducts() для загрузки товаров.
+ * - Поддерживается фильтрация товаров по названию с помощью TextWatcher.
+ * - При добавлении нового товара проверяются поля на заполненность и корректность данных.
+ * - Слушатели изменений (ListenerRegistration) удаляются при завершении активности для предотвращения утечек памяти.
+ */
+
 public class AdminProductsActivity extends AppCompatActivity {
 
     private static final String TAG = "AdminProductsActivity";

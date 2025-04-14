@@ -15,6 +15,39 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 
+/**
+ * MainActivity - главная активность приложения, управляющая навигацией и отображением фрагментов.
+ *
+ * Основные функции:
+ * - Аутентификация пользователя с использованием FirebaseAuth.
+ * - Управление нижней навигационной панелью для переключения между фрагментами.
+ * - Обработка поиска товаров через текстовое поле.
+ * - Переход к профилю, избранному или другим разделам.
+ *
+ * Поля:
+ * - BottomNavigationView bottomNavigation: Нижняя навигационная панель.
+ * - FirebaseAuth auth: Объект для работы с Firebase Authentication.
+ * - MainPage mainPageFragment: Фрагмент главной страницы.
+ * - CategoriesPage categoriesPage: Фрагмент категорий.
+ * - CartPageFragment cartPageFragment: Фрагмент корзины.
+ * - View headerLayout: Верхняя панель с поиском и кнопкой избранного.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализирует интерфейс, проверяет аутентификацию и настраивает навигацию.
+ * - onResume(): Проверяет аутентификацию при возвращении к активности и синхронизирует текущий фрагмент.
+ * - showFragment(Fragment): Отображает указанный фрагмент.
+ * - syncNavigationWithFragment(Fragment): Синхронизирует выбранный элемент навигации с текущим фрагментом.
+ * - initViews(): Инициализирует элементы интерфейса, такие как поиск и кнопка избранного.
+ * - setupListeners(): Настраивает обработчики событий для элементов интерфейса.
+ *
+ * Логика:
+ * - Если пользователь не авторизован, он перенаправляется на экран входа (LoginActivity).
+ * - Главная страница отображается по умолчанию при первой загрузке активности.
+ * - Поиск товаров осуществляется через MainPage, который фильтрует результаты.
+ * - Пользователь может переключаться между главной страницей, категориями, корзиной и профилем.
+ * - Верхняя панель с поиском и кнопкой избранного отображается только на главной странице.
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";

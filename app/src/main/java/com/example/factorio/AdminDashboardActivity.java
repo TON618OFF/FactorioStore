@@ -10,6 +10,29 @@ import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * AdminDashboardActivity - активность, предоставляющая интерфейс для панели управления администратора.
+ *
+ * Основные функции:
+ * - Проверка прав доступа пользователя: только администраторы могут получить доступ к панели.
+ * - Переход к разделам управления: продукты, категории, пользователи.
+ *
+ * Поля:
+ * - FirebaseFirestore db: Для взаимодействия с базой данных Firestore.
+ * - FirebaseAuth auth: Для проверки аутентификации текущего пользователя.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, проверка прав доступа и настройка кнопок для перехода.
+ *
+ * Логика:
+ * - Проверка прав администратора:
+ *   - Если текущий пользователь не аутентифицирован, отображается сообщение и активность завершает работу.
+ *   - Если пользователь аутентифицирован, проверяется поле "isAdmin" в Firestore.
+ *   - Пользователи без прав администратора получают сообщение об отказе в доступе, и активность завершается.
+ * - Кнопки панели:
+ *   - Переход в активности управления продуктами (AdminProductsActivity), категориями (AdminCategoriesActivity) и пользователями (AdminUsersActivity).
+ */
+
 public class AdminDashboardActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;

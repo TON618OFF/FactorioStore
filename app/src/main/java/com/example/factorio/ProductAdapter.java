@@ -26,6 +26,49 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * ProductAdapter - адаптер для отображения списка продуктов в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение информации о продукте: название, категория, описание, цена, количество, статус избранного.
+ * - Управление корзиной: добавление, удаление, изменение количества товаров.
+ * - Обработка кликов на избранное, детали продукта и кнопки "купить".
+ *
+ * Поля:
+ * - Context context: Контекст для работы с ресурсами и навигацией.
+ * - List<Product> productList: Список продуктов для отображения.
+ * - CartManager cartManager: Менеджер корзины для синхронизации состояния.
+ * - FirebaseFirestore db: Firestore для взаимодействия с базой данных.
+ * - FirebaseAuth auth: FirebaseAuth для проверки текущего пользователя.
+ * - Map<String, Integer> cartQuantities: Карта для хранения количества товаров в корзине.
+ *
+ * Конструкторы:
+ * - ProductAdapter(Context, List<Product>): Инициализация адаптера с контекстом и списком продуктов.
+ *
+ * Методы:
+ * - loadCartItems(): Загружает текущие товары в корзине и обновляет UI.
+ * - onCartChanged(List<CartItem>): Обновляет состояние корзины при изменении.
+ * - onCreateViewHolder(ViewGroup, int): Создает ViewHolder для элемента списка.
+ * - onBindViewHolder(ProductViewHolder, int): Привязывает данные продукта к ViewHolder.
+ * - updateButtonState(ProductViewHolder, int, Product): Обновляет состояние кнопок и UI для продукта.
+ * - getItemCount(): Возвращает количество товаров в списке.
+ * - onDetachedFromRecyclerView(RecyclerView): Удаляет слушателя изменений корзины при уничтожении адаптера.
+ *
+ * Вложенный класс:
+ * - ProductViewHolder:
+ *   - Поля:
+ *     - Различные элементы интерфейса, такие как ImageView, TextView, Button, LinearLayout.
+ *   - Конструктор:
+ *     - ProductViewHolder(View): Инициализирует элементы интерфейса.
+ *
+ * Логика:
+ * - Пользователь может добавлять товары в корзину, изменять их количество или удалять.
+ * - Если товара нет в наличии, кнопка "Купить" становится неактивной.
+ * - Избранные товары синхронизируются с Firestore.
+ * - Клики на детали продукта перенаправляют на экран с дополнительной информацией.
+ * - Обновление UI корзины происходит в реальном времени.
+ */
+
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> implements CartManager.OnCartChangedListener {
     private static final String TAG = "ProductAdapter";
     private Context context;

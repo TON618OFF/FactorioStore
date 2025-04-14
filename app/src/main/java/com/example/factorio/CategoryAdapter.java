@@ -15,6 +15,36 @@ import com.bumptech.glide.Glide;
 
 import java.util.List;
 
+/**
+ * CategoryAdapter - адаптер для управления отображением списка категорий в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение карточек категорий с изображением и названием.
+ * - Обработка нажатий на карточки для перехода к продуктам внутри категории.
+ *
+ * Поля:
+ * - List<Category> categories: Список категорий для отображения.
+ *
+ * Методы:
+ * - onCreateViewHolder(ViewGroup, int): Создает ViewHolder для элемента категории.
+ * - onBindViewHolder(CategoryViewHolder, int): Привязывает данные категории к ViewHolder.
+ * - getItemCount(): Возвращает количество категорий в списке.
+ *
+ * Вложенный класс:
+ * - CategoryViewHolder:
+ *   - Поля:
+ *     - ImageView categoryImage: Изображение категории.
+ *     - TextView categoryName: Название категории.
+ *   - Методы:
+ *     - CategoryViewHolder(View): Инициализирует ViewHolder, связывает элементы интерфейса.
+ *
+ * Логика:
+ * - Каждая карточка категории содержит изображение и название.
+ * - При нажатии на карточку происходит переход к активности `CategoryProductsActivity`,
+ *   где отображаются продукты, относящиеся к выбранной категории.
+ * - Glide используется для загрузки изображений с поддержкой плейсхолдера и обработки ошибок.
+ */
+
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
     private List<Category> categories;
 

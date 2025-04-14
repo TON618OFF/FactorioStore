@@ -30,6 +30,51 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * ProductDetailsActivity - активность для отображения подробной информации о продукте.
+ *
+ * Основные функции:
+ * - Отображение основных данных о продукте, включая название, категорию, описание, цену, количество, рейтинг и изображение.
+ * - Управление корзиной (добавление, увеличение/уменьшение количества).
+ * - Работа с отзывами: добавление, редактирование, удаление и отображение списка отзывов.
+ * - Управление статусом "избранного" для продукта.
+ *
+ * Поля:
+ * - Элементы интерфейса (например, ImageView, TextView, Button, RecyclerView) для отображения данных продукта и взаимодействия с пользователем.
+ * - FirebaseFirestore db: Ссылка на Firestore для работы с базой данных.
+ * - FirebaseAuth auth: Аутентификация пользователя.
+ * - CartManager cartManager: Менеджер корзины.
+ * - List<Review> reviewsList: Список отзывов о продукте.
+ * - ReviewAdapter reviewAdapter: Адаптер для отображения отзывов.
+ * - String productId: Идентификатор текущего продукта.
+ * - Product product: Объект продукта с подробной информацией.
+ * - int cartQuantity: Локальное состояние количества продукта в корзине.
+ * - String currentUserReviewId: Идентификатор текущего отзыва пользователя.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация интерфейса, загрузка данных продукта и отзывов, настройка обработчиков событий.
+ * - onDestroy(): Удаляет слушателя изменений корзины при завершении активности.
+ * - onCartChanged(List<CartItem>): Обновляет состояние корзины при изменении.
+ * - loadProductDetails(): Загружает и отображает информацию о продукте.
+ * - updateAddToCartButton(): Обновляет состояние кнопки добавления в корзину.
+ * - loadReviews(): Загружает и отображает список отзывов.
+ * - checkUserOrderAndReview(String): Проверяет, покупал ли пользователь продукт, и может ли он оставить отзыв.
+ * - submitReview(String): Добавляет новый отзыв о продукте.
+ * - showEditReviewDialog(Review): Показывает диалог для редактирования отзыва.
+ * - deleteReview(): Удаляет текущий отзыв пользователя.
+ * - updateAverageRating(): Пересчитывает и обновляет средний рейтинг продукта.
+ * - updateFirestoreRating(double): Обновляет средний рейтинг продукта в Firestore.
+ * - getRatingFromRadioGroup(int), setRatingInRadioGroup(RadioGroup, int): Получение/установка рейтинга из RadioGroup.
+ * - checkFavoriteStatus(): Проверяет, добавлен ли продукт в избранное.
+ * - toggleFavorite(FirebaseUser): Добавляет/удаляет продукт из избранного.
+ *
+ * Логика:
+ * - Пользователь может взаимодействовать с продуктом: добавлять в корзину, изменять количество, оставлять отзывы и добавлять в избранное.
+ * - Отзывы доступны только после покупки продукта.
+ * - Средний рейтинг продукта обновляется при добавлении/удалении отзывов.
+ * - Статус избранного синхронизируется с Firestore.
+ */
+
 public class ProductDetailsActivity extends AppCompatActivity implements CartManager.OnCartChangedListener {
     private static final String TAG = "ProductDetailsActivity";
 

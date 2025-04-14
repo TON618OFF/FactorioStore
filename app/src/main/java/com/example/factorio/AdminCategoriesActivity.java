@@ -26,6 +26,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AdminCategoriesActivity - активность для управления категориями в приложении.
+ *
+ * Основные функции:
+ * - Загрузка списка категорий из Firestore в реальном времени.
+ * - Возможность добавления новых категорий через диалоговое окно.
+ * - Реализован поиск категорий по названию с использованием TextWatcher.
+ * - Использование RecyclerView для отображения списка категорий с адаптером AdminCategoryAdapter.
+ * - Удаление слушателя изменений из Firestore при уничтожении активности для предотвращения утечек.
+ *
+ * Поля:
+ * - RecyclerView для отображения категорий.
+ * - EditText для ввода поискового запроса.
+ * - MaterialButton для добавления новой категории.
+ * - FirebaseFirestore для взаимодействия с базой данных.
+ * - ListenerRegistration для управления слушателем изменений.
+ *
+ * Методы:
+ * - onCreate: Инициализация активности, настройка интерфейса и слушателей.
+ * - loadCategories: Загрузка и обновление списка категорий из Firestore.
+ * - showAddCategoryDialog: Отображение диалогового окна для добавления новой категории.
+ * - onDestroy: Очистка слушателя изменений при уничтожении активности.
+ */
+
 public class AdminCategoriesActivity extends AppCompatActivity {
 
     private static final String TAG = "AdminCategoriesActivity";

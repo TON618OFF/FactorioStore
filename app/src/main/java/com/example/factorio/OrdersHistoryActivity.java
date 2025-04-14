@@ -24,6 +24,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * OrdersHistoryActivity - активность для отображения истории заказов пользователя.
+ *
+ * Основные функции:
+ * - Загрузка истории заказов из Firestore.
+ * - Отображение заказов в RecyclerView.
+ * - Сортировка заказов по дате в убывающем порядке (последние заказы отображаются первыми).
+ *
+ * Поля:
+ * - RecyclerView ordersRecyclerView: Список заказов.
+ * - OrdersHistoryAdapter ordersAdapter: Адаптер для отображения заказов.
+ * - List<Order> ordersList: Список заказов пользователя.
+ * - FirebaseFirestore db: Ссылка на Firestore для работы с данными.
+ * - FirebaseAuth auth: Ссылка на FirebaseAuth для проверки текущего пользователя.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка RecyclerView и загрузка данных.
+ * - loadOrdersHistory(): Загружает историю заказов пользователя из Firestore.
+ *
+ * Логика:
+ * - Если пользователь не авторизован, он перенаправляется на экран входа (LoginActivity).
+ * - Заказы загружаются из коллекции "orders_history" пользователя, отсортированные по дате в убывающем порядке.
+ * - В случае ошибки загрузки отображается сообщение об ошибке.
+ * - RecyclerView обновляется после загрузки данных.
+ */
+
 public class OrdersHistoryActivity extends AppCompatActivity {
 
     private static final String TAG = "OrdersHistoryActivity";
@@ -80,7 +106,3 @@ public class OrdersHistoryActivity extends AppCompatActivity {
                 });
     }
 }
-
-// Модель данных для заказа
-
-// Адаптер для RecyclerView

@@ -14,6 +14,37 @@ import com.bumptech.glide.Glide;
 
 import java.util.List;
 
+/**
+ * CheckoutAdapter - адаптер для отображения списка товаров на экране оформления заказа.
+ *
+ * Основные функции:
+ * - Отображение товаров с информацией о названии, изображении, количестве и общей стоимости.
+ * - Возможность перехода к деталям товаров при клике на изображение.
+ *
+ * Поля:
+ * - List<CartItem> cartItems: Список товаров в корзине.
+ *
+ * Методы:
+ * - onCreateViewHolder(ViewGroup, int): Создает ViewHolder для элемента списка.
+ * - onBindViewHolder(CheckoutViewHolder, int): Привязывает данные товара к ViewHolder.
+ * - getItemCount(): Возвращает количество товаров в корзине.
+ *
+ * Вложенный класс:
+ * - CheckoutViewHolder:
+ *   - Поля:
+ *     - ImageView itemImage: Изображение товара.
+ *     - TextView itemName: Название товара.
+ *     - TextView itemTotalPrice: Общая стоимость товара.
+ *     - TextView itemQuantity: Количество товара.
+ *   - Конструктор:
+ *     - CheckoutViewHolder(View): Инициализирует ViewHolder и связывает элементы интерфейса.
+ *
+ * Логика:
+ * - Товары отображаются с информацией о названии, количестве и общей стоимости.
+ * - Используется Glide для загрузки изображений с поддержкой плейсхолдера.
+ * - Клик на изображение товара открывает экран с деталями товара (ProductDetailsActivity).
+ */
+
 public class CheckoutAdapter extends RecyclerView.Adapter<CheckoutAdapter.CheckoutViewHolder> {
 
     private List<CartItem> cartItems;

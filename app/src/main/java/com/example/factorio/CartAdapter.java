@@ -20,6 +20,42 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * CartAdapter - адаптер для отображения и управления элементами корзины в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение списка товаров в корзине с информацией о названии, изображении, количестве и общей стоимости.
+ * - Обновление количества товаров в корзине.
+ * - Удаление товаров из корзины.
+ * - Переход к деталям продукта при нажатии на изображение товара.
+ *
+ * Поля:
+ * - List<CartItem> cartItems: Список товаров в корзине.
+ * - UpdateTotalPriceListener updateListener: Интерфейс для уведомления об обновлении общей стоимости корзины.
+ * - Context context: Контекст активности, в которой используется адаптер.
+ * - FirebaseFirestore db: Для проверки доступного количества товаров в Firestore.
+ *
+ * Методы:
+ * - updateCartItems(List<CartItem>): Обновление списка товаров в корзине.
+ * - onCreateViewHolder(ViewGroup, int): Создание ViewHolder для отображения элемента списка.
+ * - onBindViewHolder(CartViewHolder, int): Привязка данных товара к ViewHolder.
+ * - getItemCount(): Возвращает количество элементов в корзине.
+ *
+ * Вложенный класс:
+ * - CartViewHolder:
+ *   - Отображает данные товара (изображение, имя, количество, общая стоимость).
+ *   - Слушатели для кнопок увеличения, уменьшения количества и удаления товара.
+ *
+ * Интерфейс:
+ * - UpdateTotalPriceListener: Используется для уведомления об изменении общей стоимости корзины.
+ *
+ * Логика:
+ * - При увеличении количества товара проверяется доступное количество в Firestore.
+ * - При уменьшении количества товара или удалении его из корзины обновляется состояние корзины через CartManager.
+ * - При нажатии на изображение товара осуществляется переход на экран с деталями товара.
+ * - Glide используется для загрузки изображений товара с поддержкой плейсхолдера.
+ */
+
 public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder> {
     private List<CartItem> cartItems;
     private UpdateTotalPriceListener updateListener;

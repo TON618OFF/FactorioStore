@@ -2,6 +2,43 @@ package com.example.factorio;
 
 import com.google.firebase.Timestamp;
 
+/**
+ * Product - класс, представляющий продукт в системе.
+ *
+ * Основные функции:
+ * - Хранение информации о продукте, включая идентификатор, название, изображение, описание, категорию, цену, количество, рейтинг и статус избранного.
+ * - Предоставление методов для получения и изменения полей продукта.
+ *
+ * Поля:
+ * - String id: Уникальный идентификатор продукта.
+ * - String name: Название продукта.
+ * - String imageUrl: URL изображения продукта.
+ * - String description: Описание продукта.
+ * - String category: Идентификатор категории продукта.
+ * - String categoryName: Название категории продукта.
+ * - int price: Цена продукта.
+ * - int quantity: Количество доступного продукта.
+ * - boolean isFavorite: Статус избранного для продукта.
+ * - Timestamp timestamp: Временная метка добавления продукта.
+ * - double averageRating: Средний рейтинг продукта.
+ *
+ * Конструкторы:
+ * - Product(): Пустой конструктор, необходимый для работы с Firestore.
+ *
+ * Методы:
+ * - getId(), setId(String): Получение и установка идентификатора продукта.
+ * - getName(), setName(String): Получение и установка названия продукта.
+ * - getImageUrl(), setImageUrl(String): Получение и установка URL изображения продукта.
+ * - getDescription(), setDescription(String): Получение и установка описания продукта.
+ * - getCategory(), setCategory(String): Получение и установка идентификатора категории продукта.
+ * - getCategoryName(), setCategoryName(String): Получение и установка названия категории продукта.
+ * - getPrice(), setPrice(int): Получение и установка цены продукта.
+ * - getQuantity(), setQuantity(int): Получение и установка доступного количества продукта.
+ * - isFavorite(), setFavorite(boolean): Получение и установка статуса избранного для продукта.
+ * - getTimestamp(), setTimestamp(Timestamp): Получение и установка временной метки добавления продукта.
+ * - getAverageRating(), setAverageRating(double): Получение и установка среднего рейтинга продукта.
+ */
+
 public class Product {
     private String id, name, imageUrl, description, category, categoryName;
     private int price, quantity;

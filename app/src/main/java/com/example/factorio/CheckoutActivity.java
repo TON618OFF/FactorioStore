@@ -28,6 +28,48 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * CheckoutActivity - активность для оформления заказа.
+ *
+ * Основные функции:
+ * - Проверка доступности товаров для заказа.
+ * - Расчет итоговой стоимости с учетом комиссии.
+ * - Создание заказа и обновление количества товаров в базе данных.
+ * - Очистка корзины после успешного оформления.
+ *
+ * Поля:
+ * - RecyclerView checkoutRecyclerView: Список товаров для оформления.
+ * - TextView itemsCountText, totalPriceText, commissionText, commissionAmountText, totalAmountText: Отображение информации о заказе.
+ * - RadioGroup paymentMethodGroup: Группа переключателей для выбора способа оплаты.
+ * - RadioButton paymentCard, paymentCash: Способы оплаты (карта или наличные).
+ * - Button checkoutButton: Кнопка для оформления заказа.
+ * - CheckBox termsCheckbox: Чекбокс для подтверждения условий использования.
+ * - List<CartItem> cartItems: Список товаров в корзине.
+ * - CheckoutAdapter checkoutAdapter: Адаптер для отображения товаров в списке.
+ * - FirebaseFirestore db: Ссылка на Firestore для работы с данными.
+ * - FirebaseAuth auth: Ссылка на FirebaseAuth для проверки текущего пользователя.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка интерфейса и загрузка данных.
+ * - initViews(): Инициализирует элементы интерфейса.
+ * - setupListeners(): Настраивает обработчики событий для интерфейса.
+ * - updateCheckoutButtonState(boolean): Обновляет состояние кнопки оформления заказа.
+ * - updateUI(int): Обновляет отображение информации о заказе.
+ * - updateCommissionAndTotal(int, int): Рассчитывает комиссию и итоговую сумму в зависимости от способа оплаты.
+ * - checkStockBeforeCheckout(): Проверяет наличие товаров перед оформлением заказа.
+ * - checkoutOrder(): Создает заказ и обновляет количество товаров в базе данных.
+ * - completeCheckout(String, String, int): Завершает процесс оформления заказа, очищает корзину и возвращает данные результата.
+ * - calculateTotalItems(List<CartItem>): Вычисляет общее количество товаров.
+ * - calculateTotalPrice(List<CartItem>): Вычисляет общую стоимость товаров.
+ *
+ * Логика:
+ * - Пользователь может выбрать способ оплаты (карта или наличные).
+ * - Комиссия добавляется только при оплате картой (5% от общей стоимости).
+ * - Перед оформлением заказа проверяется наличие товаров на складе.
+ * - Заказ сохраняется в Firestore с обновлением количества товаров.
+ * - После успешного оформления корзина очищается, и пользователь получает уведомление.
+ */
+
 public class CheckoutActivity extends AppCompatActivity {
 
     private static final String TAG = "CheckoutActivity";

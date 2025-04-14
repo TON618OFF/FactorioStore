@@ -12,6 +12,42 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * OrdersHistoryAdapter - адаптер для отображения списка заказов в истории.
+ *
+ * Основные функции:
+ * - Отображение информации о заказах в RecyclerView, включая детали товаров, дату, сумму, комиссию и способ оплаты.
+ *
+ * Поля:
+ * - List<Order> ordersList: Список заказов для отображения.
+ *
+ * Методы:
+ * - OrdersHistoryAdapter(List<Order>): Конструктор для инициализации списка заказов.
+ * - onCreateViewHolder(ViewGroup, int): Создает ViewHolder для элемента списка.
+ * - onBindViewHolder(OrderViewHolder, int): Привязывает данные заказа к ViewHolder.
+ * - getItemCount(): Возвращает количество заказов в списке.
+ *
+ * Вложенный класс:
+ * - OrderViewHolder:
+ *   - Поля:
+ *     - TextView orderIdText: Поле для отображения идентификатора заказа.
+ *     - TextView dateText: Поле для отображения даты заказа.
+ *     - TextView itemsText: Поле для отображения списка товаров заказа.
+ *     - TextView subtotalText: Поле для отображения промежуточной суммы заказа.
+ *     - TextView commissionText: Поле для отображения комиссии.
+ *     - TextView totalText: Поле для отображения итоговой суммы заказа.
+ *     - TextView paymentMethodText: Поле для отображения способа оплаты.
+ *   - Методы:
+ *     - OrderViewHolder(View): Конструктор, инициализирующий элементы интерфейса.
+ *     - bind(Order): Привязывает данные заказа к элементам интерфейса.
+ *
+ * Логика:
+ * - Данные заказа, включая идентификатор, дату, список товаров, промежуточную сумму, комиссию и итоговую сумму, отображаются в соответствующих элементах интерфейса.
+ * - Форматирование даты выполняется с использованием SimpleDateFormat.
+ * - Список товаров внутри заказа отображается с указанием названия, количества и стоимости каждого товара.
+ * - Способ оплаты отображается как "Карта" или "Наличные" в зависимости от данных заказа.
+ */
+
 class OrdersHistoryAdapter extends RecyclerView.Adapter<OrdersHistoryAdapter.OrderViewHolder> {
 
     private List<Order> ordersList;

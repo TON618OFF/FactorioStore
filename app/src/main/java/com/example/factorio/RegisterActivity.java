@@ -40,6 +40,43 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.util.Properties;
 
+/**
+ * RegisterActivity - активность для регистрации нового пользователя.
+ *
+ * Основные функции:
+ * - Валидация данных пользователя, таких как почта, пароль, никнейм, дата рождения и адрес.
+ * - Проверка уникальности почты и никнейма в Firebase Authentication и Firestore.
+ * - Отправка кода подтверждения на почту пользователя.
+ * - Регистрация пользователя в Firebase Authentication и сохранение данных профиля в Firestore.
+ *
+ * Поля:
+ * - TextInputEditText: Поля для ввода почты, пароля, подтверждения пароля, никнейма, даты рождения и адреса.
+ * - TextInputLayout: Контейнеры для полей с валидацией ввода.
+ * - MaterialButton: Кнопка для завершения регистрации.
+ * - TextView: Ссылка для перехода на экран входа.
+ * - FirebaseAuth auth: Firebase Authentication для работы с пользователями.
+ * - FirebaseFirestore db: Firestore для сохранения данных профиля.
+ * - String verificationCode: Код подтверждения для верификации почты.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация интерфейса, настройка обработчиков событий.
+ * - showDatePickerDialog(): Показывает диалог выбора даты рождения.
+ * - initiateRegistration(): Начинает процесс регистрации, включая валидацию и проверку уникальности данных.
+ * - sendVerificationCode(String, String, String, String, String): Отправляет код подтверждения на почту.
+ * - generateVerificationCode(): Генерирует случайный шестизначный код подтверждения.
+ * - sendVerificationEmail(String, String): Отправляет электронное письмо с кодом подтверждения.
+ * - showVerificationDialog(String, String, String, String, String): Показывает диалог для ввода кода подтверждения.
+ * - registerUser(String, String, String, String, String): Регистрирует пользователя в Firebase Authentication и сохраняет данные профиля в Firestore.
+ * - validateInputs(String, String, String, String, String, String): Проверяет корректность введённых данных.
+ * - clearErrors(): Сбрасывает ошибки валидации.
+ *
+ * Логика:
+ * - Пользователь вводит данные, которые проверяются на корректность и уникальность.
+ * - После валидации отправляется код подтверждения на почту.
+ * - Пользователь вводит код подтверждения, после чего данные сохраняются в Firebase Authentication и Firestore.
+ * - В случае ошибок отображаются соответствующие сообщения.
+ */
+
 public class RegisterActivity extends AppCompatActivity {
 
     private static final String TAG = "RegisterActivity";

@@ -20,6 +20,41 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.regex.Pattern;
 
+/**
+ * LoginActivity - активность для входа в приложение.
+ *
+ * Основные функции:
+ * - Авторизация пользователя с использованием Firebase Authentication.
+ * - Валидация ввода email и пароля.
+ * - Переход к экрану регистрации или сброса пароля.
+ *
+ * Поля:
+ * - TextInputLayout emailLayout, passwordLayout: Поля ввода для email и пароля.
+ * - TextInputEditText emailInput, passwordInput: Текстовые поля для ввода email и пароля.
+ * - MaterialButton loginButton: Кнопка для отправки данных авторизации.
+ * - TextView registerLink, forgotPasswordLink: Ссылки для перехода на регистрацию и сброс пароля.
+ * - FirebaseAuth auth: Объект для работы с Firebase Authentication.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка интерфейса и обработчиков событий.
+ * - initViews(): Инициализация элементов интерфейса.
+ * - setupListeners(): Настройка обработчиков событий для кнопок и ссылок.
+ * - attemptLogin(): Проверяет ввод пользователя и выполняет авторизацию.
+ * - validateInput(String, String): Проверяет корректность ввода email и пароля.
+ * - performLogin(String, String): Выполняет вход в Firebase Authentication.
+ * - showResetEmailDialog(): Показывает диалог для ввода email для сброса пароля.
+ * - sendPasswordResetEmail(String, AlertDialog, TextView): Отправляет письмо для сброса пароля.
+ * - navigateToRegister(): Переход на экран регистрации.
+ * - navigateToMain(): Переход на главный экран приложения после успешного входа.
+ *
+ * Логика:
+ * - Пользователь вводит email и пароль, которые проверяются на корректность.
+ * - В случае успешного входа приложение переходит на главный экран.
+ * - Если пользователь забыл пароль, он может запросить сброс через email.
+ * - Переход на экран регистрации доступен для новых пользователей.
+ * - Интерфейс обновляется в зависимости от состояния (например, отключение кнопки входа при выполнении запроса).
+ */
+
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";

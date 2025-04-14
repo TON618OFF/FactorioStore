@@ -29,6 +29,50 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * MainPage - фрагмент главной страницы приложения для отображения списка товаров.
+ *
+ * Основные функции:
+ * - Загрузка товаров из Firestore и их отображение в RecyclerView.
+ * - Поддержка поиска, фильтров, сортировки и управления избранным.
+ * - Синхронизация состояния корзины с отображением товаров.
+ *
+ * Поля:
+ * - RecyclerView productsRecyclerView: Список товаров.
+ * - ProductAdapter productAdapter: Адаптер для отображения товаров.
+ * - FirebaseFirestore db: Ссылка на Firestore для работы с данными.
+ * - List<Product> productsList: Полный список товаров.
+ * - List<Product> filteredList: Отфильтрованный список товаров.
+ * - Map<String, String> categoryNames: Карта для хранения названий категорий по их ID.
+ * - String currentQuery: Текущий поисковый запрос.
+ * - boolean inStockFilter: Фильтр "В наличии".
+ * - String priceSort: Параметр сортировки по цене ("asc", "desc", "none").
+ * - String quantitySort: Параметр сортировки по количеству ("asc", "desc", "none").
+ * - double ratingFilter: Фильтр по минимальному рейтингу.
+ *
+ * Методы:
+ * - onCreateView(LayoutInflater, ViewGroup, Bundle): Инициализация интерфейса и загрузка данных.
+ * - onActivityResult(int, int, Intent): Обработка результатов фильтрации, сортировки и изменений избранного.
+ * - onResume(): Загрузка товаров при возвращении к фрагменту.
+ * - onDestroyView(): Удаление слушателей изменений корзины при уничтожении фрагмента.
+ * - onCartChanged(List<CartItem>): Обработка изменений корзины.
+ * - openFilterSortActivity(): Открывает активность для настройки фильтров и сортировки.
+ * - loadCategories(): Загружает категории из Firestore.
+ * - loadProductsFromFirestore(): Загружает товары из Firestore.
+ * - fetchProducts(List<String>): Загружает товары с учетом избранного.
+ * - searchProducts(String): Выполняет поиск товаров по запросу.
+ * - updateFavoriteStatus(String, boolean): Обновляет статус избранного для товара.
+ * - addToCart(Product): Добавляет товар в корзину.
+ * - getProductPositionById(String): Возвращает позицию товара в filteredList по его ID.
+ * - applyFiltersAndSort(): Применяет текущие фильтры и сортировку к списку товаров.
+ *
+ * Логика:
+ * - Товары загружаются из Firestore и отображаются в списке.
+ * - Пользователь может искать товары, фильтровать их по наличию, рейтингу, а также сортировать по цене или количеству.
+ * - Избранные товары синхронизируются с состоянием пользователя.
+ * - Корзина обновляется в реальном времени, и фильтры пересчитываются при изменении ее состояния.
+ */
+
 public class MainPage extends Fragment implements CartManager.OnCartChangedListener {
     private static final String TAG = "MainPage";
     private static final int FILTER_SORT_REQUEST = 2;

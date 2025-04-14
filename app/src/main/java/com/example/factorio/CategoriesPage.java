@@ -21,6 +21,30 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * CategoriesPage - фрагмент для отображения списка категорий товаров.
+ *
+ * Основные функции:
+ * - Загрузка категорий из Firestore.
+ * - Отображение категорий в виде сетки с использованием RecyclerView.
+ * - Обновление списка категорий при изменениях в Firestore.
+ *
+ * Поля:
+ * - RecyclerView categoriesRecyclerView: Отображение категорий в виде сетки.
+ * - CategoryAdapter categoryAdapter: Адаптер для управления элементами категорий.
+ * - FirebaseFirestore db: Ссылка на Firestore для загрузки данных.
+ * - List<Category> categoriesList: Список категорий для отображения.
+ *
+ * Методы:
+ * - onCreateView(LayoutInflater, ViewGroup, Bundle): Инициализация интерфейса, настройка RecyclerView и адаптера.
+ * - loadCategoriesFromFirestore(): Загрузка списка категорий из Firestore с использованием слушателя изменений.
+ *
+ * Логика:
+ * - При загрузке фрагмента категории загружаются из Firestore и сортируются по времени добавления.
+ * - Если список категорий пуст, отображается уведомление.
+ * - Любые изменения в коллекции "categories" автоматически обновляют отображение.
+ */
+
 public class CategoriesPage extends Fragment {
 
     private static final String TAG = "CategoriesPage";

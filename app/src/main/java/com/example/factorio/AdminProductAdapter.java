@@ -25,6 +25,45 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AdminProductAdapter - адаптер для управления товарами в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение списка товаров с поддержкой фильтрации по названию.
+ * - Обновление и удаление товаров с использованием Firestore.
+ * - Редактирование товара через диалоговое окно.
+ *
+ * Поля:
+ * - Context context: Контекст активности, в которой используется адаптер.
+ * - List<Product> productList: Полный список товаров.
+ * - List<Product> filteredProductList: Отфильтрованный список товаров для отображения.
+ * - List<String> categoryNames: Список названий категорий.
+ * - List<Category> categories: Полный список категорий.
+ * - FirebaseFirestore db: База данных Firestore для взаимодействия с товарами.
+ *
+ * Методы:
+ * - getCategoryNames(): Получение списка названий категорий для отображения в Spinner.
+ * - updateCategories(List<Category>): Обновление списка категорий и их названий.
+ * - updateProductList(List<Product>): Обновление полного списка товаров в адаптере.
+ * - filterByName(String): Фильтрация товаров по названию.
+ * - onCreateViewHolder(ViewGroup, int): Создание ViewHolder для отображения элемента списка.
+ * - onBindViewHolder(ProductViewHolder, int): Привязка данных товара к ViewHolder.
+ * - getItemCount(): Возвращает размер отфильтрованного списка товаров.
+ *
+ * Вложенный класс:
+ * - ProductViewHolder:
+ *   - Отображает данные товара (название, цена, URL изображения, описание, категория, количество).
+ *   - Предоставляет кнопки для обновления и удаления товара.
+ *   - Методы:
+ *     - bind(Product): Привязка данных товара к элементу списка.
+ *     - showUpdateProductDialog(Product): Отображение диалога для редактирования товара.
+ *     - showDeleteConfirmationDialog(String): Отображение диалога для подтверждения удаления товара.
+ *
+ * Взаимодействие с Firestore:
+ * - Обновление и удаление товаров через методы Firestore.
+ * - Слушатели успеха и ошибок для отображения сообщений пользователю.
+ */
+
 public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapter.ProductViewHolder> {
 
     private static final String TAG = "AdminProductAdapter";

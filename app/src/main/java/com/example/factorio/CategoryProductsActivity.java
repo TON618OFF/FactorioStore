@@ -21,6 +21,40 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * CategoryProductsActivity - активность для отображения товаров из выбранной категории.
+ *
+ * Основные функции:
+ * - Загрузка товаров, относящихся к выбранной категории, из Firestore.
+ * - Отображение товаров в RecyclerView с возможностью отображать избранное.
+ * - Синхронизация состояния корзины с отображением товаров.
+ *
+ * Поля:
+ * - RecyclerView categoryProductsRecyclerView: Список товаров.
+ * - TextView categoryTitle: Название текущей категории.
+ * - FloatingActionButton backFab: Кнопка для возврата к предыдущему экрану.
+ * - ProductAdapter productAdapter: Адаптер для управления отображением товаров.
+ * - List<Product> productsList: Список товаров для отображения.
+ * - FirebaseFirestore db: Ссылка на Firestore для работы с данными.
+ * - FirebaseAuth auth: Ссылка на FirebaseAuth для проверки текущего пользователя.
+ * - String categoryId: Идентификатор категории товаров.
+ * - String categoryName: Название категории товаров.
+ * - Set<String> favoriteIds: Множество идентификаторов избранных товаров.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка RecyclerView и загрузка данных.
+ * - onDestroy(): Удаление слушателей при уничтожении активности.
+ * - onCartChanged(List<CartItem>): Обновление интерфейса при изменении корзины.
+ * - loadFavoritesAndProducts(): Загрузка избранных товаров и товаров из категории.
+ * - loadProductsByCategory(Set<String>): Загрузка товаров из Firestore для текущей категории.
+ *
+ * Логика:
+ * - При загрузке активности загружается список товаров, относящихся к категории, а также избранные товары для авторизованных пользователей.
+ * - Если категория имеет ID "all", загружаются все товары, иначе только товары, относящиеся к категории.
+ * - Обновление состояния корзины отображается в реальном времени благодаря CartManager.
+ * - Товары отображаются с информацией о наличии, принадлежности к категории и статусе избранного.
+ */
+
 public class CategoryProductsActivity extends AppCompatActivity implements CartManager.OnCartChangedListener {
     private static final String TAG = "CategoryProductsActivity";
     private RecyclerView categoryProductsRecyclerView;

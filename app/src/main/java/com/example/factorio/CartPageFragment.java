@@ -47,6 +47,44 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+/**
+ * CartPageFragment - фрагмент для отображения и управления корзиной пользователя.
+ *
+ * Основные функции:
+ * - Отображение товаров в корзине с использованием RecyclerView.
+ * - Очистка корзины, оформление заказа и расчет общей стоимости.
+ * - Генерация PDF чека и отправка его по email.
+ * - Сохранение истории заказов в Firestore.
+ *
+ * Поля:
+ * - RecyclerView cartRecyclerView: Список товаров в корзине.
+ * - TextView cartItemsCount, cartTotalPrice: Отображение количества товаров и общей стоимости.
+ * - ImageButton clearCartButton: Кнопка для очистки корзины.
+ * - Button checkoutButton: Кнопка для оформления заказа.
+ * - CartAdapter cartAdapter: Адаптер для управления списком товаров в корзине.
+ * - CartManager cartManager: Менеджер корзины для синхронизации данных.
+ * - Handler mainHandler: Для выполнения задач в основном потоке.
+ *
+ * Методы:
+ * - onCreateView(): Инициализация интерфейса, настройка RecyclerView и кнопок.
+ * - onCartChanged(List<CartItem>): Вызывается при изменении корзины, обновляет данные и интерфейс.
+ * - onError(String): Отображает сообщение об ошибке.
+ * - onActivityResult(int, int, Intent): Обрабатывает результат оформления заказа, генерирует PDF и отправляет email.
+ * - saveOrderToHistory(String, String, List<CartItem>, int): Сохраняет заказ в Firestore в историю пользователя.
+ * - loadCart(): Загружает корзину из Firestore через CartManager.
+ * - updateUI(): Обновляет отображение количества товаров и общей стоимости.
+ * - generatePdf(String, String, List<CartItem>, int): Генерирует PDF чек для заказа.
+ * - sendEmailWithPdf(String, String, File, int, List<CartItem>): Отправляет email с прикрепленным PDF.
+ * - calculateTotalPrice(List<CartItem>): Вычисляет общую стоимость товаров в корзине.
+ * - onDestroyView(): Удаляет слушатели изменений корзины и очищает обработчики.
+ *
+ * Логика:
+ * - Пользователь может очистить корзину, оформить заказ или обновить количество товаров.
+ * - При оформлении заказа генерируется PDF чек и отправляется на email пользователя.
+ * - История заказов сохраняется в Firestore для текущего пользователя.
+ * - Все изменения корзины автоматически обновляют интерфейс.
+ */
+
 public class CartPageFragment extends Fragment implements CartManager.OnCartChangedListener, CartManager.OnErrorListener {
 
     private static final int CHECKOUT_REQUEST_CODE = 1;

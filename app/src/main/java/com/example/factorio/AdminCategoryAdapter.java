@@ -23,6 +23,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AdminCategoryAdapter - адаптер для управления категориями в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение списка категорий с использованием RecyclerView.
+ * - Фильтрация категорий по названию.
+ * - Обновление и удаление категорий с использованием Firestore.
+ *
+ * Поля:
+ * - Context context: Контекст активности, в которой используется адаптер.
+ * - List<Category> categoryList: Полный список категорий.
+ * - List<Category> filteredCategoryList: Отфильтрованный список категорий для отображения.
+ * - FirebaseFirestore db: База данных Firestore для взаимодействия с категориями.
+ *
+ * Методы:
+ * - updateCategoryList(List<Category>): Обновление полного списка категорий.
+ * - filterByName(String): Фильтрация категорий по названию.
+ * - onCreateViewHolder(ViewGroup, int): Создание ViewHolder для отображения элемента списка.
+ * - onBindViewHolder(CategoryViewHolder, int): Привязка данных категории к ViewHolder.
+ * - getItemCount(): Возвращает размер отфильтрованного списка категорий.
+ *
+ * Вложенный класс:
+ * - CategoryViewHolder:
+ *   - Отображает данные категории (название) и предоставляет кнопки для обновления и удаления категории.
+ *   - Методы:
+ *     - bind(Category): Привязка данных категории к элементу списка.
+ *     - showUpdateCategoryDialog(Category): Отображение диалога для обновления категории.
+ *     - showDeleteConfirmationDialog(String): Отображение диалога для подтверждения удаления категории.
+ *
+ * Взаимодействие с Firestore:
+ * - Добавление, обновление и удаление категорий через методы Firestore.
+ * - Слушатели успеха и ошибок для отображения сообщений пользователю.
+ */
 public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdapter.CategoryViewHolder> {
 
     private static final String TAG = "AdminCategoryAdapter";

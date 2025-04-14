@@ -13,6 +13,52 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * CartManager - синглтон-класс для управления корзиной покупок.
+ *
+ * Основные функции:
+ * - Управление элементами корзины, включая добавление, обновление количества и удаление товаров.
+ * - Сохранение и загрузка корзины из Firestore.
+ * - Уведомление зарегистрированных слушателей об изменениях корзины или ошибках.
+ *
+ * Поля:
+ * - static CartManager instance: Единственный экземпляр CartManager (синглтон).
+ * - List<CartItem> cartItems: Локальный список элементов корзины.
+ * - FirebaseFirestore db: Ссылка на базу данных Firestore.
+ * - FirebaseAuth auth: Ссылка на FirebaseAuth для идентификации пользователя.
+ * - Set<OnCartChangedListener> listeners: Слушатели, уведомляемые об изменениях корзины.
+ * - Set<OnErrorListener> errorListeners: Слушатели, уведомляемые об ошибках.
+ *
+ * Методы:
+ * - getInstance(): Возвращает единственный экземпляр CartManager.
+ * - addToCart(CartItem): Добавляет товар в корзину с проверкой доступного количества в Firestore.
+ * - removeAllFromCart(): Удаляет все товары из корзины и Firestore.
+ * - updateQuantity(String, int): Обновляет количество товара в корзине с проверкой наличия в Firestore.
+ * - getCartItems(): Возвращает копию локального списка товаров корзины.
+ * - getItemQuantity(String): Возвращает количество товара в корзине по его ID.
+ * - loadCartFromFirestore(OnCartLoadedListener): Загружает корзину из Firestore.
+ * - addOnCartChangedListener(OnCartChangedListener): Регистрирует слушателя для изменений корзины.
+ * - removeOnCartChangedListener(OnCartChangedListener): Удаляет слушателя изменений корзины.
+ * - addOnErrorListener(OnErrorListener): Регистрирует слушателя для ошибок.
+ * - removeOnErrorListener(OnErrorListener): Удаляет слушателя ошибок.
+ *
+ * Вспомогательные методы:
+ * - notifyCartChanged(): Уведомляет всех слушателей об изменениях в корзине.
+ * - notifyError(String): Уведомляет всех слушателей об ошибке.
+ * - updateFirestore(String, CartItem): Обновляет данные корзины в Firestore для текущего пользователя.
+ *
+ * Интерфейсы:
+ * - OnCartChangedListener: Для уведомления об изменениях корзины.
+ * - OnCartLoadedListener: Для уведомления о завершении загрузки корзины.
+ * - OnErrorListener: Для обработки ошибок, связанных с корзиной.
+ *
+ * Логика:
+ * - При добавлении или обновлении товара проверяется доступное количество в Firestore.
+ * - При удалении товара или очистке корзины данные синхронизируются с Firestore.
+ * - Корзина загружается из Firestore при вызове loadCartFromFirestore().
+ * - Все изменения в корзине уведомляют зарегистрированных слушателей.
+ */
+
 public class CartManager {
     private static CartManager instance;
     private List<CartItem> cartItems;

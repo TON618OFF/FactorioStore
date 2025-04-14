@@ -18,6 +18,34 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * AdminUsersActivity - активность для управления списком пользователей.
+ *
+ * Основные функции:
+ * - Загрузка списка пользователей из Firestore в реальном времени.
+ * - Поддержка поиска пользователей по никнейму.
+ * - Использование RecyclerView для отображения списка пользователей с адаптером AdminUserAdapter.
+ *
+ * Поля:
+ * - RecyclerView usersRecyclerView: Компонент для отображения списка пользователей.
+ * - EditText searchUsersEditText: Поле для ввода поискового запроса.
+ * - FirebaseFirestore db: База данных Firestore для взаимодействия с пользователями.
+ * - AdminUserAdapter userAdapter: Адаптер для управления списком пользователей.
+ * - List<User> userList: Список пользователей.
+ * - ListenerRegistration userListener: Слушатель изменений списка пользователей в Firestore.
+ *
+ * Методы:
+ * - onCreate(Bundle): Инициализация активности, настройка интерфейса и слушателей.
+ * - loadUsers(): Загрузка списка пользователей из Firestore и обновление в адаптере.
+ * - onDestroy(): Очистка слушателя изменений при уничтожении активности.
+ *
+ * Логика:
+ * - При загрузке активности устанавливается слушатель для изменений в коллекции "users" в Firestore.
+ * - Загруженные данные обновляют список пользователей и применяют текущий фильтр поиска.
+ * - Поддерживается поиск пользователей по никнейму с помощью TextWatcher.
+ * - Слушатель изменений удаляется при завершении активности для предотвращения утечек памяти.
+ */
+
 public class AdminUsersActivity extends AppCompatActivity {
 
     private static final String TAG = "AdminUsersActivity";

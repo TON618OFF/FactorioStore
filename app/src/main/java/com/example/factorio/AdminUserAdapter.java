@@ -23,6 +23,40 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AdminUserAdapter - адаптер для управления пользователями в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение списка пользователей с поддержкой фильтрации по никнейму.
+ * - Обновление списка пользователей.
+ * - Редактирование прав доступа пользователей через диалоговое окно.
+ *
+ * Поля:
+ * - Context context: Контекст активности, в которой используется адаптер.
+ * - List<User> userList: Полный список пользователей.
+ * - List<User> filteredUserList: Отфильтрованный список пользователей для отображения.
+ * - FirebaseFirestore db: База данных Firestore для взаимодействия с пользователями.
+ *
+ * Методы:
+ * - updateUserList(List<User>): Обновление полного списка пользователей в адаптере.
+ * - filterByNickname(String): Фильтрация пользователей по никнейму.
+ * - onCreateViewHolder(ViewGroup, int): Создание ViewHolder для отображения элемента списка.
+ * - onBindViewHolder(UserViewHolder, int): Привязка данных пользователя к ViewHolder.
+ * - getItemCount(): Возвращает размер отфильтрованного списка пользователей.
+ *
+ * Вложенный класс:
+ * - UserViewHolder:
+ *   - Отображает данные пользователя (email, никнейм, права администратора).
+ *   - Предоставляет кнопку для редактирования прав доступа пользователя.
+ *   - Методы:
+ *     - bind(User): Привязка данных пользователя к элементу списка.
+ *     - showEditRightsDialog(User): Отображение диалога для редактирования прав доступа пользователя.
+ *
+ * Взаимодействие с Firestore:
+ * - Обновление прав администратора для пользователя через метод Firestore.
+ * - Слушатели успеха и ошибок для отображения сообщений пользователю.
+ */
+
 public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.UserViewHolder> {
 
     private static final String TAG = "AdminUserAdapter";

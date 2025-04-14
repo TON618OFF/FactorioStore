@@ -14,6 +14,45 @@ import com.google.firebase.auth.FirebaseAuth;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * ReviewAdapter - адаптер для отображения списка отзывов в RecyclerView.
+ *
+ * Основные функции:
+ * - Отображение отзывов, включая никнейм автора, текст и рейтинг.
+ * - Управление отзывами пользователя (редактирование и удаление).
+ *
+ * Поля:
+ * - List<Review> reviews: Список отзывов для отображения.
+ * - Consumer<Review> onEditClick: Обработчик клика для редактирования отзыва.
+ * - Runnable onDeleteClick: Обработчик клика для удаления отзыва.
+ * - String currentUserId: ID текущего пользователя для проверки прав на редактирование и удаление.
+ *
+ * Конструкторы:
+ * - ReviewAdapter(List<Review>, Consumer<Review>, Runnable): Инициализация адаптера с обработчиками событий.
+ *
+ * Методы:
+ * - onCreateViewHolder(ViewGroup, int): Создаёт ViewHolder для элемента списка.
+ * - onBindViewHolder(ReviewViewHolder, int): Привязывает данные отзыва к ViewHolder.
+ * - getItemCount(): Возвращает количество отзывов в списке.
+ *
+ * Вложенный класс:
+ * - ReviewViewHolder:
+ *   - Поля:
+ *     - TextView nickname: Поле для отображения никнейма автора.
+ *     - TextView reviewText: Поле для отображения текста отзыва.
+ *     - TextView reviewRating: Поле для отображения рейтинга отзыва.
+ *     - ImageView editIcon: Иконка для редактирования отзыва.
+ *     - ImageView deleteIcon: Иконка для удаления отзыва.
+ *   - Конструктор:
+ *     - ReviewViewHolder(View): Инициализирует элементы интерфейса для отзыва.
+ *
+ * Логика:
+ * - Отзывы отображаются в виде списка, включая никнейм автора, текст и рейтинг.
+ * - Иконки редактирования и удаления отображаются только для отзывов текущего пользователя.
+ * - При клике на иконку редактирования вызывается onEditClick с текущим отзывом.
+ * - При клике на иконку удаления вызывается onDeleteClick.
+ */
+
 public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewViewHolder> {
     private List<Review> reviews;
     private Consumer<Review> onEditClick;
