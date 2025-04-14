@@ -14,6 +14,7 @@ public class FilterSortActivity extends AppCompatActivity {
     private CheckBox inStockCheckbox;
     private RadioGroup priceSortGroup;
     private RadioGroup quantitySortGroup;
+    private RadioGroup ratingFilterGroup; // Новый RadioGroup
     private MaterialButton applyButton;
 
     @Override
@@ -24,6 +25,7 @@ public class FilterSortActivity extends AppCompatActivity {
         inStockCheckbox = findViewById(R.id.in_stock_checkbox);
         priceSortGroup = findViewById(R.id.price_sort_group);
         quantitySortGroup = findViewById(R.id.quantity_sort_group);
+        ratingFilterGroup = findViewById(R.id.rating_filter_group); // Инициализация
         applyButton = findViewById(R.id.apply_button);
 
         // Получаем текущие настройки из Intent (если есть)
@@ -31,6 +33,7 @@ public class FilterSortActivity extends AppCompatActivity {
         inStockCheckbox.setChecked(intent.getBooleanExtra("inStock", false));
         String priceSort = intent.getStringExtra("priceSort");
         String quantitySort = intent.getStringExtra("quantitySort");
+        double ratingFilter = intent.getDoubleExtra("ratingFilter", 0.0); // Новый параметр
 
         if ("asc".equals(priceSort)) {
             priceSortGroup.check(R.id.price_asc_radio);
@@ -46,6 +49,14 @@ public class FilterSortActivity extends AppCompatActivity {
             quantitySortGroup.check(R.id.quantity_desc_radio);
         } else {
             quantitySortGroup.check(R.id.quantity_none_radio);
+        }
+
+        if (ratingFilter == 4.0) {
+            ratingFilterGroup.check(R.id.rating_4_radio);
+        } else if (ratingFilter == 3.0) {
+            ratingFilterGroup.check(R.id.rating_3_radio);
+        } else {
+            ratingFilterGroup.check(R.id.rating_none_radio);
         }
 
         applyButton.setOnClickListener(v -> applyFiltersAndSort());
@@ -77,6 +88,16 @@ public class FilterSortActivity extends AppCompatActivity {
             quantitySort = "desc";
         }
         resultIntent.putExtra("quantitySort", quantitySort);
+
+        // Фильтр по рейтингу
+        double ratingFilter = 0.0; // 0.0 означает "без фильтра"
+        int ratingCheckedId = ratingFilterGroup.getCheckedRadioButtonId();
+        if (ratingCheckedId == R.id.rating_4_radio) {
+            ratingFilter = 4.0;
+        } else if (ratingCheckedId == R.id.rating_3_radio) {
+            ratingFilter = 3.0;
+        }
+        resultIntent.putExtra("ratingFilter", ratingFilter);
 
         setResult(RESULT_OK, resultIntent);
         finish();

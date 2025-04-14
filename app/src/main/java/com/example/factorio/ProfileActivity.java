@@ -278,21 +278,46 @@ public class ProfileActivity extends AppCompatActivity {
                             return;
                         }
 
-                        Map<String, Object> updates = new HashMap<>();
-                        updates.put("nickname", newNickname);
-                        updates.put("lastNicknameChange", System.currentTimeMillis());
+                        // Проверка уникальности никнейма
+                        db.collection("users")
+                                .whereEqualTo("nickname", newNickname)
+                                .get()
+                                .addOnSuccessListener(querySnapshot -> {
+                                    if (!querySnapshot.isEmpty()) {
+                                        // Никнейм уже существует у другого пользователя
+                                        for (var doc : querySnapshot.getDocuments()) {
+                                            if (!doc.getId().equals(userId)) {
+                                                Toast.makeText(this, "Этот никнейм уже занят", Toast.LENGTH_SHORT).show();
+                                                return;
+                                            }
+                                        }
+                                    }
 
-                        db.collection("users").document(userId)
-                                .update(updates)
-                                .addOnSuccessListener(aVoid -> {
-                                    nicknameText.setText(newNickname);
-                                    Toast.makeText(this, "Никнейм изменён", Toast.LENGTH_SHORT).show();
-                                    dialog.dismiss();
+                                    // Если никнейм уникален или принадлежит текущему пользователю, обновляем
+                                    Map<String, Object> updates = new HashMap<>();
+                                    updates.put("nickname", newNickname);
+                                    updates.put("lastNicknameChange", System.currentTimeMillis());
+
+                                    db.collection("users").document(userId)
+                                            .update(updates)
+                                            .addOnSuccessListener(aVoid -> {
+                                                nicknameText.setText(newNickname);
+                                                Toast.makeText(this, "Никнейм изменён", Toast.LENGTH_SHORT).show();
+                                                dialog.dismiss();
+                                            })
+                                            .addOnFailureListener(e -> Toast.makeText(this, "Ошибка изменения никнейма: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                                 })
-                                .addOnFailureListener(e -> Toast.makeText(this, "Ошибка изменения никнейма: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Ошибка проверки уникальности никнейма: " + e.getMessage());
+                                    Toast.makeText(this, "Ошибка проверки никнейма: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
                     });
 
                     dialog.show();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Ошибка загрузки данных пользователя: " + e.getMessage());
+                    Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 

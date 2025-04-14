@@ -13,7 +13,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="200dp"
             android:orientation="vertical"
             android:padding="24dp">
@@ -55,8 +55,6 @@
                     android:layout_marginTop="16dp"
                     android:hint="Пароль"
                     android:textColorHint="@color/steel_gray"
-                    app:layout_constraintTop_toBottomOf="@id/address_layout"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -69,6 +67,16 @@
                         android:enabled="true"
                         android:backgroundTint="@color/copper_light"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/forgotPasswordLink"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_gravity="end"
+                    android:text="Забыли пароль?"
+                    android:textColor="@color/oil_blue"
+                    android:textSize="14sp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/loginButton"

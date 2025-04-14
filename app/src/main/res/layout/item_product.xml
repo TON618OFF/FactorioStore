@@ -53,7 +53,7 @@
                 android:id="@+id/product_quantity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="В наличии:"
+                android:text="В наличии: "
                 android:textSize="14sp"
                 android:textColor="@color/steel_gray"
                 android:layout_marginTop="4dp"/>
@@ -112,6 +112,7 @@
                     app:cornerRadius="8dp"
                     android:layout_marginEnd="4dp"/>
 
+                <!-- Контейнер для кнопки "Купить" -->
                 <Button
                     android:id="@+id/buy_button"
                     android:layout_width="0dp"
@@ -124,6 +125,45 @@
                     app:cornerRadius="8dp"
                     android:layout_marginStart="4dp"/>
 
+                <!-- Контейнер для управления количеством -->
+                <LinearLayout
+                    android:id="@+id/quantity_layout"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginStart="4dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/decrease_quantity_button"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@drawable/product_minus"
+                        android:clickable="true"
+                        android:contentDescription="Уменьшить количество"/>
+
+                    <TextView
+                        android:id="@+id/quantity_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1"
+                        android:textColor="@color/light_steel"
+                        android:textSize="16sp"
+                        android:background="@drawable/quantity_background"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <ImageView
+                        android:id="@+id/increase_quantity_button"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@drawable/product_plus"
+                        android:clickable="true"
+                        android:contentDescription="Увеличить количество"/>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

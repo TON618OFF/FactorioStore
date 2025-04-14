@@ -14,7 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -48,19 +47,18 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
-public class CartPageFragment extends Fragment {
+public class CartPageFragment extends Fragment implements CartManager.OnCartChangedListener, CartManager.OnErrorListener {
 
     private static final int CHECKOUT_REQUEST_CODE = 1;
     private static final String TAG = "CartPageFragment";
 
     private RecyclerView cartRecyclerView;
     private TextView cartItemsCount, cartTotalPrice;
-    private ImageView backIcon;
     private ImageButton clearCartButton;
     private Button checkoutButton;
     private CartAdapter cartAdapter;
     private CartManager cartManager;
-    private Handler mainHandler; // Handler для работы с главным потоком
+    private Handler mainHandler;
 
     @Nullable
     @Override
@@ -78,8 +76,10 @@ public class CartPageFragment extends Fragment {
         cartRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         cartRecyclerView.setAdapter(cartAdapter);
 
-        mainHandler = new Handler(Looper.getMainLooper()); // Инициализация Handler для главного потока
+        mainHandler = new Handler(Looper.getMainLooper());
 
+        cartManager.addOnCartChangedListener(this);
+        cartManager.addOnErrorListener(this);
         loadCart();
 
         clearCartButton.setOnClickListener(v -> {
@@ -105,6 +105,22 @@ public class CartPageFragment extends Fragment {
     }
 
     @Override
+    public void onCartChanged(List<CartItem> cartItems) {
+        if (isAdded()) {
+            Log.d(TAG, "onCartChanged вызван, элементов: " + cartItems.size());
+            cartAdapter.updateCartItems(cartItems);
+            updateUI();
+        }
+    }
+
+    @Override
+    public void onError(String message) {
+        if (isAdded()) {
+            mainHandler.post(() -> Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show());
+        }
+    }
+
+    @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CHECKOUT_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
@@ -121,8 +137,7 @@ public class CartPageFragment extends Fragment {
                         sendEmailWithPdf(email, orderId, pdfFile, commission, items);
                         saveOrderToHistory(orderId, email, items, commission);
 
-                        // Безопасное обновление UI через Handler
-                        if (isAdded()) { // Проверяем, что фрагмент прикреплён
+                        if (isAdded()) {
                             mainHandler.post(() -> {
                                 Toast.makeText(getContext(), "Чек отправлен на " + email, Toast.LENGTH_SHORT).show();
                                 cartManager.removeAllFromCart();
@@ -176,8 +191,8 @@ public class CartPageFragment extends Fragment {
 
     private void loadCart() {
         cartManager.loadCartFromFirestore(items -> {
-            if (isAdded()) { // Проверяем, что фрагмент прикреплён
-                cartAdapter.notifyDataSetChanged();
+            if (isAdded()) {
+                cartAdapter.updateCartItems(items);
                 updateUI();
             }
         });
@@ -188,12 +203,14 @@ public class CartPageFragment extends Fragment {
         int totalItems = 0;
         int totalPrice = 0;
         for (CartItem item : items) {
-            totalItems += item.getQuantity();
+            int quantity = item.getQuantity();
+            totalItems += quantity;
             totalPrice += item.getTotalPrice();
+            Log.d(TAG, "Товар: " + item.getName() + ", Количество: " + quantity);
         }
+        Log.d(TAG, "Обновление UI: totalItems=" + totalItems + ", totalPrice=" + totalPrice);
         cartItemsCount.setText("Товаров в корзине: " + totalItems);
         cartTotalPrice.setText("Общая цена: " + totalPrice + " руб.");
-        cartAdapter.notifyDataSetChanged();
     }
 
     private void updateTotalPrice() {
@@ -384,6 +401,8 @@ public class CartPageFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        mainHandler.removeCallbacksAndMessages(null); // Очистка Handler при уничтожении
+        cartManager.removeOnCartChangedListener(this);
+        cartManager.removeOnErrorListener(this);
+        mainHandler.removeCallbacksAndMessages(null);
     }
 }

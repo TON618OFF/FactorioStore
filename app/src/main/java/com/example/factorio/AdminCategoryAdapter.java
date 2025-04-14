@@ -2,6 +2,7 @@ package com.example.factorio;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,20 +18,53 @@ import com.google.android.material.button.MaterialButton;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdapter.CategoryViewHolder> {
 
+    private static final String TAG = "AdminCategoryAdapter";
     private Context context;
-    private List<Category> categoryList;
+    private List<Category> categoryList; // Полный список категорий
+    private List<Category> filteredCategoryList; // Отфильтрованный список для отображения
     private FirebaseFirestore db;
 
     public AdminCategoryAdapter(Context context, List<Category> categoryList) {
         this.context = context;
-        this.categoryList = categoryList;
+        this.categoryList = new ArrayList<>(categoryList);
+        this.filteredCategoryList = new ArrayList<>(categoryList); // Изначально отображаем все категории
         this.db = FirebaseFirestore.getInstance();
+    }
+
+    // Метод для обновления полного списка категорий
+    public void updateCategoryList(List<Category> newCategoryList) {
+        this.categoryList.clear();
+        this.categoryList.addAll(newCategoryList);
+        this.filteredCategoryList.clear();
+        this.filteredCategoryList.addAll(newCategoryList); // Синхронизируем отфильтрованный список
+        notifyDataSetChanged();
+        Log.d(TAG, "Список категорий обновлён, размер: " + filteredCategoryList.size());
+    }
+
+    // Метод для фильтрации по названию
+    public void filterByName(String query) {
+        filteredCategoryList.clear();
+        String lowerQuery = query.trim().toLowerCase();
+
+        if (lowerQuery.isEmpty()) {
+            filteredCategoryList.addAll(categoryList); // Если запрос пуст, показываем все категории
+        } else {
+            for (Category category : categoryList) {
+                String name = category.getName() != null ? category.getName().toLowerCase() : "";
+                if (name.contains(lowerQuery)) {
+                    filteredCategoryList.add(category);
+                }
+            }
+        }
+        notifyDataSetChanged();
+        Log.d(TAG, "Фильтрация завершена, размер filteredCategoryList: " + filteredCategoryList.size());
     }
 
     @NonNull
@@ -42,13 +76,13 @@ public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdap
 
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-        Category category = categoryList.get(position);
+        Category category = filteredCategoryList.get(position); // Используем отфильтрованный список
         holder.bind(category);
     }
 
     @Override
     public int getItemCount() {
-        return categoryList.size();
+        return filteredCategoryList.size(); // Размер отфильтрованного списка
     }
 
     class CategoryViewHolder extends RecyclerView.ViewHolder {
@@ -66,6 +100,7 @@ public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdap
             nameText.setText(category.getName() != null ? category.getName() : "Без названия");
             updateButton.setOnClickListener(v -> showUpdateCategoryDialog(category));
             deleteButton.setOnClickListener(v -> showDeleteConfirmationDialog(category.getId()));
+            Log.d(TAG, "Привязка категории: " + category.getName());
         }
 
         private void showUpdateCategoryDialog(Category category) {
@@ -104,7 +139,10 @@ public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdap
                             Toast.makeText(context, "Категория обновлена", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                         })
-                        .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        .addOnFailureListener(e -> {
+                            Log.e(TAG, "Ошибка обновления категории: " + e.getMessage());
+                            Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
             });
 
             dialog.show();
@@ -118,7 +156,10 @@ public class AdminCategoryAdapter extends RecyclerView.Adapter<AdminCategoryAdap
                         db.collection("categories").document(categoryId)
                                 .delete()
                                 .addOnSuccessListener(aVoid -> Toast.makeText(context, "Категория удалена", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Ошибка удаления категории: " + e.getMessage());
+                                    Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
                     })
                     .setNegativeButton("Нет", null)
                     .show();

@@ -1,5 +1,6 @@
 package com.example.factorio;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +33,12 @@ public class CheckoutAdapter extends RecyclerView.Adapter<CheckoutAdapter.Checko
     public void onBindViewHolder(@NonNull CheckoutViewHolder holder, int position) {
         CartItem item = cartItems.get(position);
 
+        // Переход к деталям товара при клике на изображение
+        holder.itemImage.setOnClickListener(v -> {
+            Intent intent = new Intent(holder.itemView.getContext(), ProductDetailsActivity.class);
+            intent.putExtra("productId", item.getProductId());
+            holder.itemView.getContext().startActivity(intent);
+        });
         holder.itemName.setText(item.getName());
         holder.itemTotalPrice.setText(item.getTotalPrice() + " ₽");
         holder.itemQuantity.setText("Количество: " + item.getQuantity());

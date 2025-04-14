@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +27,14 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
 
     private static final String TAG = "AdminUserAdapter";
     private Context context;
-    private List<User> userList;
+    private List<User> userList; // Полный список пользователей
+    private List<User> filteredUserList; // Отфильтрованный список для отображения
     private FirebaseFirestore db;
 
     public AdminUserAdapter(Context context, List<User> userList) {
         this.context = context;
-        this.userList = userList;
+        this.userList = new ArrayList<>(userList); // Копируем исходный список
+        this.filteredUserList = new ArrayList<>(userList); // Изначально отображаем всех
         this.db = FirebaseFirestore.getInstance();
     }
 
@@ -44,20 +47,41 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
 
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
-        User user = userList.get(position);
+        User user = filteredUserList.get(position); // Используем отфильтрованный список
         holder.bind(user);
     }
 
     @Override
     public int getItemCount() {
-        return userList.size();
+        return filteredUserList.size(); // Размер отфильтрованного списка
     }
 
     public void updateUserList(List<User> newUserList) {
         this.userList.clear();
         this.userList.addAll(newUserList);
+        this.filteredUserList.clear();
+        this.filteredUserList.addAll(newUserList);
         notifyDataSetChanged();
         Log.d(TAG, "Список пользователей в адаптере обновлён, размер: " + userList.size());
+    }
+
+    // Метод для фильтрации по никнейму
+    public void filterByNickname(String query) {
+        filteredUserList.clear();
+        String lowerQuery = query.trim().toLowerCase();
+
+        if (lowerQuery.isEmpty()) {
+            filteredUserList.addAll(userList); // Если запрос пустой, показываем всех
+        } else {
+            for (User user : userList) {
+                String nickname = user.getNickname() != null ? user.getNickname().toLowerCase() : "";
+                if (nickname.contains(lowerQuery)) { // Проверяем, содержит ли никнейм запрос
+                    filteredUserList.add(user);
+                }
+            }
+        }
+        notifyDataSetChanged();
+        Log.d(TAG, "Фильтрация завершена, размер filteredUserList: " + filteredUserList.size());
     }
 
     class UserViewHolder extends RecyclerView.ViewHolder {
@@ -96,20 +120,17 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
             AlertDialog dialog = builder.create();
 
             saveButton.setOnClickListener(v -> {
-                boolean isAdmin = isAdminSpinner.getSelectedItemPosition() == 1;
+                boolean newIsAdmin = isAdminSpinner.getSelectedItemPosition() == 1;
                 Map<String, Object> userData = new HashMap<>();
-                userData.put("isAdmin", isAdmin);
+                userData.put("isAdmin", newIsAdmin);
 
                 db.collection("users").document(user.getId())
                         .update(userData)
                         .addOnSuccessListener(aVoid -> {
-                            user.setAdmin(isAdmin);
+                            user.setAdmin(newIsAdmin);
+                            isAdminText.setText(newIsAdmin ? "Да" : "Нет");
                             Toast.makeText(context, "Права обновлены", Toast.LENGTH_SHORT).show();
-                            Log.d(TAG, "Права обновлены в Firestore для " + user.getEmail() + ": isAdmin = " + isAdmin);
-                            // Принудительно обновляем список
-                            if (context instanceof AdminUsersActivity) {
-                                ((AdminUsersActivity) context).loadUsers();
-                            }
+                            Log.d(TAG, "Права обновлены в Firestore для " + user.getEmail() + ": isAdmin = " + newIsAdmin);
                             dialog.dismiss();
                         })
                         .addOnFailureListener(e -> {

@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -25,28 +26,31 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ProductDetailsActivity extends AppCompatActivity {
+public class ProductDetailsActivity extends AppCompatActivity implements CartManager.OnCartChangedListener {
+    private static final String TAG = "ProductDetailsActivity";
 
     private ImageView productImage;
-    private TextView productName, productCategory, productDescription, productPrice, ratingValue, detailQuantity;
+    private TextView productName, productCategory, productDescription, productPrice, ratingValue, detailQuantity, averageRatingValue;
     private Button addToCartButton, submitReviewButton;
     private EditText reviewInput;
     private RadioGroup ratingRadioGroup;
     private RecyclerView reviewsRecyclerView;
-    private LinearLayout addReviewContainer;
+    private LinearLayout addReviewContainer, quantityLayout;
+    private ImageView favoriteIcon, increaseButton, decreaseButton;
+    private TextView quantityText;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private List<Review> reviewsList;
     private ReviewAdapter reviewAdapter;
     private String productId;
-    private ImageView favoriteIcon;
     private Product product;
     private String currentUserReviewId;
+    private CartManager cartManager;
+    private int cartQuantity; // Локальное состояние корзины
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,19 +71,32 @@ public class ProductDetailsActivity extends AppCompatActivity {
         reviewsRecyclerView = findViewById(R.id.reviews_recycler_view);
         addReviewContainer = findViewById(R.id.add_review_container);
         favoriteIcon = findViewById(R.id.favorite_icon);
+        averageRatingValue = findViewById(R.id.average_rating_value);
+        quantityLayout = findViewById(R.id.quantity_layout);
+        increaseButton = findViewById(R.id.increase_quantity_button);
+        decreaseButton = findViewById(R.id.decrease_quantity_button);
+        quantityText = findViewById(R.id.quantity_text);
 
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
+        cartManager = CartManager.getInstance();
         reviewsList = new ArrayList<>();
         reviewAdapter = new ReviewAdapter(reviewsList, this::showEditReviewDialog, this::deleteReview);
         reviewsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         reviewsRecyclerView.setAdapter(reviewAdapter);
 
         productId = getIntent().getStringExtra("productId");
-        if (productId != null) {
-            loadProductDetails();
-            loadReviews();
+        if (productId == null) {
+            Toast.makeText(this, "Ошибка: productId не передан", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
+
+        cartManager.loadCartFromFirestore(items -> {
+            Log.d(TAG, "Корзина загружена, элементов: " + items.size());
+            cartQuantity = cartManager.getItemQuantity(productId);
+            loadProductDetails();
+        });
 
         FirebaseUser user = auth.getCurrentUser();
         if (user != null) {
@@ -94,12 +111,78 @@ public class ProductDetailsActivity extends AppCompatActivity {
         });
 
         addToCartButton.setOnClickListener(v -> {
-            if (product != null && product.getQuantity() > 0) {
-                CartItem cartItem = new CartItem(product.getId(), product.getName(), product.getPrice(), 1, product.getImageUrl());
-                CartManager.getInstance().addToCart(cartItem);
-                Toast.makeText(this, "Товар добавлен в корзину", Toast.LENGTH_SHORT).show();
-            } else {
+            if (user == null) {
+                Toast.makeText(this, "Войдите, чтобы добавить в корзину", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (product == null || product.getQuantity() <= 0) {
                 Toast.makeText(this, "Товара нет в наличии", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            db.collection("products").document(productId)
+                    .get()
+                    .addOnSuccessListener(document -> {
+                        if (document.exists()) {
+                            Long quantity = document.getLong("quantity");
+                            int availableQuantity = quantity != null ? quantity.intValue() : 0;
+                            if (availableQuantity > 0) {
+                                CartItem cartItem = new CartItem(productId, product.getName(),
+                                        product.getPrice(), 1, product.getImageUrl());
+                                cartManager.addToCart(cartItem);
+                                cartQuantity = 1;
+                                updateAddToCartButton();
+                                Toast.makeText(this, product.getName() + " добавлен в корзину", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, "Товара нет в наличии", Toast.LENGTH_SHORT).show();
+                                product.setQuantity(0);
+                                updateAddToCartButton();
+                            }
+                        } else {
+                            Toast.makeText(this, "Товар не найден", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Ошибка проверки наличия", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка Firestore: " + e.getMessage());
+                    });
+        });
+
+        increaseButton.setOnClickListener(v -> {
+            if (user == null) {
+                Toast.makeText(this, "Войдите, чтобы изменить количество", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (product == null) return;
+            db.collection("products").document(productId)
+                    .get()
+                    .addOnSuccessListener(document -> {
+                        if (document.exists()) {
+                            Long quantity = document.getLong("quantity");
+                            int availableQuantity = quantity != null ? quantity.intValue() : 0;
+                            if (cartQuantity < availableQuantity) {
+                                cartManager.updateQuantity(productId, cartQuantity + 1);
+                                cartQuantity++;
+                                updateAddToCartButton();
+                            } else {
+                                Toast.makeText(this, "Нельзя добавить больше, чем есть в наличии", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Ошибка проверки наличия", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка Firestore: " + e.getMessage());
+                    });
+        });
+
+        decreaseButton.setOnClickListener(v -> {
+            if (user == null) {
+                Toast.makeText(this, "Войдите, чтобы изменить количество", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (cartQuantity > 0) {
+                cartManager.updateQuantity(productId, cartQuantity - 1);
+                cartQuantity--;
+                updateAddToCartButton();
             }
         });
 
@@ -118,11 +201,27 @@ public class ProductDetailsActivity extends AppCompatActivity {
                                     Toast.makeText(this, "Никнейм не найден", Toast.LENGTH_SHORT).show();
                                 }
                             }
-                        });
+                        })
+                        .addOnFailureListener(e -> Toast.makeText(this, "Ошибка загрузки данных пользователя", Toast.LENGTH_SHORT).show());
             } else {
                 Toast.makeText(this, "Войдите, чтобы оставить отзыв", Toast.LENGTH_SHORT).show();
             }
         });
+
+        cartManager.addOnCartChangedListener(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cartManager.removeOnCartChangedListener(this);
+    }
+
+    @Override
+    public void onCartChanged(List<CartItem> cartItems) {
+        Log.d(TAG, "Корзина изменилась, элементов: " + cartItems.size());
+        cartQuantity = cartManager.getItemQuantity(productId);
+        updateAddToCartButton();
     }
 
     private void loadProductDetails() {
@@ -137,50 +236,73 @@ public class ProductDetailsActivity extends AppCompatActivity {
                             productDescription.setText(product.getDescription() != null ? product.getDescription() : "Без описания");
                             productPrice.setText(String.format("%d руб.", product.getPrice()));
                             detailQuantity.setText("В наличии: " + product.getQuantity());
-                            Glide.with(this).load(product.getImageUrl()).placeholder(R.drawable.ic_placeholder).error(R.drawable.ic_placeholder).into(productImage);
+
+                            String imageUrl = product.getImageUrl();
+                            if (imageUrl != null && !imageUrl.isEmpty() && !imageUrl.equals("/1")) {
+                                Glide.with(this)
+                                        .load(imageUrl)
+                                        .placeholder(R.drawable.ic_placeholder)
+                                        .error(R.drawable.ic_placeholder)
+                                        .into(productImage);
+                            } else {
+                                productImage.setImageResource(R.drawable.ic_placeholder);
+                            }
+
+                            double avgRating = product.getAverageRating();
+                            averageRatingValue.setText(String.format("%.1f", avgRating));
 
                             String category = product.getCategory();
-                            Log.d("ProductDetails", "Category from product: " + category);
                             if (category != null && !category.isEmpty()) {
                                 db.collection("categories").document(category)
                                         .get()
                                         .addOnSuccessListener(categoryDoc -> {
-                                            if (categoryDoc.exists()) {
-                                                String categoryName = categoryDoc.getString("name");
-                                                Log.d("ProductDetails", "CategoryName from Firestore: " + categoryName);
-                                                if (categoryName != null && !categoryName.isEmpty()) {
-                                                    product.setCategoryName(categoryName);
-                                                } else {
-                                                    product.setCategoryName("Без категории");
-                                                }
-                                            } else {
-                                                product.setCategoryName("Категория не найдена");
-                                            }
+                                            String categoryName = categoryDoc.exists() ? categoryDoc.getString("name") : "Без категории";
+                                            product.setCategoryName(categoryName != null ? categoryName : "Без категории");
                                             productCategory.setText("Категория: " + product.getCategoryName());
                                         })
                                         .addOnFailureListener(e -> {
                                             product.setCategoryName("Ошибка загрузки");
-                                            productCategory.setText("Категория: " + product.getCategoryName());
-                                            Log.e("ProductDetails", "Error loading category: " + e.getMessage());
+                                            productCategory.setText("Категория: Ошибка");
                                         });
                             } else {
                                 product.setCategoryName("Не указана");
-                                productCategory.setText("Категория: " + product.getCategoryName());
+                                productCategory.setText("Категория: Не указана");
                             }
 
                             updateAddToCartButton();
                             checkFavoriteStatus();
+                            loadReviews();
                         } else {
-                            Toast.makeText(this, "Ошибка: продукт не загружен", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Ошибка: продукт не удалось загрузить", Toast.LENGTH_SHORT).show();
                         }
                     } else {
                         Toast.makeText(this, "Продукт не найден", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Ошибка загрузки продукта: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    productCategory.setText("Категория: Ошибка загрузки");
+                    Toast.makeText(this, "Ошибка загрузки продукта", Toast.LENGTH_SHORT).show();
+                    productCategory.setText("Категория: Ошибка");
                 });
+    }
+
+    private void updateAddToCartButton() {
+        if (product == null) return;
+
+        Log.d(TAG, "Обновление кнопки корзины, товар: " + product.getName() + ", количество: " + cartQuantity);
+        if (cartQuantity > 0) {
+            addToCartButton.setVisibility(View.GONE);
+            quantityLayout.setVisibility(View.VISIBLE);
+            quantityText.setText(String.valueOf(cartQuantity));
+            decreaseButton.setEnabled(true);
+            increaseButton.setEnabled(cartQuantity < product.getQuantity());
+        } else {
+            addToCartButton.setVisibility(View.VISIBLE);
+            quantityLayout.setVisibility(View.GONE);
+            addToCartButton.setText(product.getQuantity() > 0 ? "Добавить в корзину" : "Нет в наличии");
+            addToCartButton.setEnabled(product.getQuantity() > 0);
+            addToCartButton.setBackgroundTintList(ContextCompat.getColorStateList(
+                    this, product.getQuantity() > 0 ? R.color.circuit_green : R.color.coal_gray));
+        }
     }
 
     private void loadReviews() {
@@ -207,6 +329,10 @@ public class ProductDetailsActivity extends AppCompatActivity {
                             }
                         }
                         reviewAdapter.notifyDataSetChanged();
+                        updateAverageRating();
+                    } else {
+                        Log.e(TAG, "Ошибка загрузки отзывов: ", task.getException());
+                        Toast.makeText(this, "Ошибка загрузки отзывов", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -231,31 +357,25 @@ public class ProductDetailsActivity extends AppCompatActivity {
                     }
 
                     if (hasOrdered) {
-                        Log.d("ProductDetails", "Заказ найден для productId: " + productId);
                         db.collection("products").document(productId).collection("reviews")
                                 .whereEqualTo("userId", userId)
                                 .get()
                                 .addOnSuccessListener(reviewSnapshot -> {
                                     if (reviewSnapshot.isEmpty()) {
-                                        Log.d("ProductDetails", "Отзывов нет, показываем форму");
                                         addReviewContainer.setVisibility(View.VISIBLE);
                                     } else {
-                                        Log.d("ProductDetails", "Отзыв уже существует, скрываем форму");
                                         addReviewContainer.setVisibility(View.GONE);
                                     }
                                 })
                                 .addOnFailureListener(e -> {
-                                    Log.e("ProductDetails", "Ошибка проверки отзывов: " + e.getMessage());
                                     addReviewContainer.setVisibility(View.GONE);
                                 });
                     } else {
-                        Log.d("ProductDetails", "Заказ не найден для productId: " + productId);
                         addReviewContainer.setVisibility(View.GONE);
-                        Toast.makeText(this, "Вы можете оставить отзыв только после покупки товара", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Отзывы доступны только после покупки", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("ProductDetails", "Ошибка проверки заказов: " + e.getMessage());
                     addReviewContainer.setVisibility(View.GONE);
                     Toast.makeText(this, "Ошибка проверки покупки", Toast.LENGTH_SHORT).show();
                 });
@@ -286,7 +406,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
                     addReviewContainer.setVisibility(View.GONE);
                     loadReviews();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> Toast.makeText(this, "Ошибка добавления отзыва", Toast.LENGTH_SHORT).show());
     }
 
     private void showEditReviewDialog(Review review) {
@@ -322,7 +442,7 @@ public class ProductDetailsActivity extends AppCompatActivity {
                         loadReviews();
                         dialog.dismiss();
                     })
-                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка обновления отзыва", Toast.LENGTH_SHORT).show());
         });
 
         dialog.show();
@@ -337,8 +457,38 @@ public class ProductDetailsActivity extends AppCompatActivity {
                         addReviewContainer.setVisibility(View.VISIBLE);
                         loadReviews();
                     })
-                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка удаления отзыва", Toast.LENGTH_SHORT).show());
         }
+    }
+
+    private void updateAverageRating() {
+        if (product == null) {
+            averageRatingValue.setText("0.0");
+            return;
+        }
+
+        if (reviewsList.isEmpty()) {
+            product.setAverageRating(0.0);
+            averageRatingValue.setText("0.0");
+            updateFirestoreRating(0.0);
+            return;
+        }
+
+        double totalRating = 0;
+        for (Review review : reviewsList) {
+            totalRating += review.getRating();
+        }
+        double avgRating = totalRating / reviewsList.size();
+        product.setAverageRating(avgRating);
+        averageRatingValue.setText(String.format("%.1f", avgRating));
+        updateFirestoreRating(avgRating);
+    }
+
+    private void updateFirestoreRating(double avgRating) {
+        db.collection("products").document(productId)
+                .update("averageRating", avgRating)
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Средний рейтинг обновлён: " + avgRating))
+                .addOnFailureListener(e -> Log.e(TAG, "Ошибка обновления рейтинга"));
     }
 
     private int getRatingFromRadioGroup(int checkedId) {
@@ -361,18 +511,6 @@ public class ProductDetailsActivity extends AppCompatActivity {
         group.check(radioButtonId);
     }
 
-    private void updateAddToCartButton() {
-        if (product != null && product.getQuantity() > 0) {
-            addToCartButton.setText("Добавить в корзину");
-            addToCartButton.setEnabled(true);
-            addToCartButton.setBackgroundTintList(getResources().getColorStateList(R.color.circuit_green));
-        } else {
-            addToCartButton.setText("Нет в наличии");
-            addToCartButton.setEnabled(false);
-            addToCartButton.setBackgroundTintList(getResources().getColorStateList(R.color.coal_gray));
-        }
-    }
-
     private void checkFavoriteStatus() {
         FirebaseUser user = auth.getCurrentUser();
         if (user != null) {
@@ -380,10 +518,13 @@ public class ProductDetailsActivity extends AppCompatActivity {
                     .get()
                     .addOnSuccessListener(favDoc -> {
                         boolean isFavorite = favDoc.exists();
-                        product.setFavorite(isFavorite);
-                        favoriteIcon.setImageResource(isFavorite ? R.drawable.favorite_on : R.drawable.favorite);
-                        favoriteIcon.setTag(isFavorite);
-                    });
+                        if (product != null) {
+                            product.setFavorite(isFavorite);
+                            favoriteIcon.setImageResource(isFavorite ? R.drawable.favorite_on : R.drawable.favorite);
+                            favoriteIcon.setTag(isFavorite);
+                        }
+                    })
+                    .addOnFailureListener(e -> Log.e(TAG, "Ошибка проверки избранного"));
         }
     }
 
@@ -405,10 +546,22 @@ public class ProductDetailsActivity extends AppCompatActivity {
             favoriteData.put("productId", productId);
             favoriteData.put("addedAt", System.currentTimeMillis());
             db.collection("users").document(userId).collection("favorites").document(productId)
-                    .set(favoriteData);
+                    .set(favoriteData)
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Ошибка добавления в избранное", Toast.LENGTH_SHORT).show();
+                        favoriteIcon.setImageResource(R.drawable.favorite);
+                        favoriteIcon.setTag(false);
+                        if (product != null) product.setFavorite(false);
+                    });
         } else {
             db.collection("users").document(userId).collection("favorites").document(productId)
-                    .delete();
+                    .delete()
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Ошибка удаления из избранного", Toast.LENGTH_SHORT).show();
+                        favoriteIcon.setImageResource(R.drawable.favorite_on);
+                        favoriteIcon.setTag(true);
+                        if (product != null) product.setFavorite(true);
+                    });
         }
     }
 }

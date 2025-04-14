@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -21,8 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class FavoritesActivity extends AppCompatActivity {
-
+public class FavoritesActivity extends AppCompatActivity implements CartManager.OnCartChangedListener {
     private static final String TAG = "FavoritesActivity";
     private RecyclerView favoritesRecyclerView;
     private TextView emptyFavoritesText;
@@ -48,7 +46,27 @@ public class FavoritesActivity extends AppCompatActivity {
         favoritesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         favoritesRecyclerView.setAdapter(productAdapter);
 
+        CartManager.getInstance().addOnCartChangedListener(this);
         loadCategories();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        CartManager.getInstance().removeOnCartChangedListener(this);
+    }
+
+    @Override
+    public void onCartChanged(List<CartItem> cartItems) {
+        Log.d(TAG, "Корзина изменилась, элементов: " + cartItems.size());
+        for (CartItem item : cartItems) {
+            for (int i = 0; i < favoritesList.size(); i++) {
+                if (favoritesList.get(i).getId().equals(item.getProductId())) {
+                    productAdapter.notifyItemChanged(i);
+                    break;
+                }
+            }
+        }
     }
 
     private void loadCategories() {
@@ -66,9 +84,9 @@ public class FavoritesActivity extends AppCompatActivity {
                         }
                         loadFavorites();
                     } else {
-                        Log.e(TAG, "Ошибка загрузки категорий: " + task.getException());
-                        Toast.makeText(this, "Ошибка загрузки категорий: " + task.getException(), Toast.LENGTH_SHORT).show();
-                        loadFavorites(); // Продолжаем без категорий
+                        Log.e(TAG, "Ошибка загрузки категорий: ", task.getException());
+                        Toast.makeText(this, "Ошибка загрузки категорий", Toast.LENGTH_SHORT).show();
+                        loadFavorites();
                     }
                 });
     }
@@ -83,18 +101,13 @@ public class FavoritesActivity extends AppCompatActivity {
 
         String userId = user.getUid();
         db.collection("users").document(userId).collection("favorites")
-                .addSnapshotListener((snapshot, e) -> {
-                    if (e != null) {
-                        Log.e(TAG, "Ошибка загрузки избранного: " + e.getMessage());
-                        Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
+                .get()
+                .addOnSuccessListener(snapshot -> {
                     favoritesList.clear();
-                    if (snapshot != null && !snapshot.isEmpty()) {
+                    if (!snapshot.isEmpty()) {
                         Log.d(TAG, "Получено избранных: " + snapshot.size());
                         int totalFavorites = snapshot.size();
-                        int[] loadedCount = {0}; // Для отслеживания завершённых загрузок
+                        int[] loadedCount = {0};
 
                         for (QueryDocumentSnapshot document : snapshot) {
                             String productId = document.getString("productId");
@@ -110,11 +123,11 @@ public class FavoritesActivity extends AppCompatActivity {
                                                     String categoryId = product.getCategory();
                                                     String categoryName = categoryNames.getOrDefault(categoryId, "Без категории");
                                                     product.setCategoryName(categoryName);
+                                                    Long quantity = productDoc.getLong("quantity");
+                                                    product.setQuantity(quantity != null ? quantity.intValue() : 0);
                                                     favoritesList.add(product);
                                                     Log.d(TAG, "Добавлен товар: " + product.getName() + ", ID: " + productId);
                                                 }
-                                            } else {
-                                                Log.w(TAG, "Товар не найден: " + productId);
                                             }
                                             loadedCount[0]++;
                                             if (loadedCount[0] == totalFavorites) {
@@ -122,7 +135,7 @@ public class FavoritesActivity extends AppCompatActivity {
                                             }
                                         })
                                         .addOnFailureListener(ex -> {
-                                            Log.e(TAG, "Ошибка загрузки товара " + productId + ": " + ex.getMessage());
+                                            Log.e(TAG, "Ошибка загрузки товара " + productId + ": ", ex);
                                             loadedCount[0]++;
                                             if (loadedCount[0] == totalFavorites) {
                                                 updateUI();
@@ -139,6 +152,10 @@ public class FavoritesActivity extends AppCompatActivity {
                         Log.d(TAG, "Список избранного пуст");
                         updateUI();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Ошибка загрузки избранного: ", e);
+                    Toast.makeText(this, "Ошибка загрузки избранного", Toast.LENGTH_SHORT).show();
                 });
     }
 

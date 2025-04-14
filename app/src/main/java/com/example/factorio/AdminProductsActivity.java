@@ -2,6 +2,9 @@ package com.example.factorio;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -16,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -26,12 +30,16 @@ import java.util.Map;
 
 public class AdminProductsActivity extends AppCompatActivity {
 
+    private static final String TAG = "AdminProductsActivity";
     private RecyclerView productsRecyclerView;
     private MaterialButton addProductButton;
+    private EditText searchProductsEditText;
     private FirebaseFirestore db;
     private AdminProductAdapter productAdapter;
     private List<Product> productList;
     private List<Category> categories;
+    private ListenerRegistration productsListener;
+    private ListenerRegistration categoriesListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +49,7 @@ public class AdminProductsActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
         productsRecyclerView = findViewById(R.id.products_recycler_view);
         addProductButton = findViewById(R.id.add_product_button);
+        searchProductsEditText = findViewById(R.id.search_products_edit_text);
 
         productList = new ArrayList<>();
         categories = new ArrayList<>();
@@ -48,17 +57,33 @@ public class AdminProductsActivity extends AppCompatActivity {
         productsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         productsRecyclerView.setAdapter(productAdapter);
 
-        loadCategories();
-        loadProducts();
+        searchProductsEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                productAdapter.filterByName(s.toString());
+            }
+        });
+
+        loadCategories();
         addProductButton.setOnClickListener(v -> showAddProductDialog());
     }
 
     private void loadCategories() {
-        db.collection("categories")
+        if (categoriesListener != null) {
+            categoriesListener.remove();
+        }
+
+        categoriesListener = db.collection("categories")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((snapshots, e) -> {
                     if (e != null) {
+                        Log.e(TAG, "Ошибка загрузки категорий: " + e.getMessage());
                         Toast.makeText(this, "Ошибка загрузки категорий: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         return;
                     }
@@ -68,17 +93,26 @@ public class AdminProductsActivity extends AppCompatActivity {
                             Category category = doc.toObject(Category.class);
                             category.setId(doc.getId());
                             categories.add(category);
+                            Log.d(TAG, "Категория загружена: " + category.getName() + ", ID: " + category.getId());
                         }
                         productAdapter.updateCategories(categories);
+                        loadProducts();
+                    } else {
+                        Log.w(TAG, "Snapshots категорий равен null");
                     }
                 });
     }
 
     private void loadProducts() {
-        db.collection("products")
+        if (productsListener != null) {
+            productsListener.remove();
+        }
+
+        productsListener = db.collection("products")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((snapshots, e) -> {
                     if (e != null) {
+                        Log.e(TAG, "Ошибка загрузки товаров: " + e.getMessage());
                         Toast.makeText(this, "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         return;
                     }
@@ -98,8 +132,16 @@ public class AdminProductsActivity extends AppCompatActivity {
                                 product.setCategoryName("Неизвестная категория");
                             }
                             productList.add(product);
+                            Log.d(TAG, "Товар загружен: " + product.getName() + ", ID: " + product.getId());
                         }
-                        productAdapter.notifyDataSetChanged();
+                        productAdapter.updateProductList(productList); // Обновляем список без фильтра
+                        String searchQuery = searchProductsEditText.getText().toString();
+                        if (!searchQuery.isEmpty()) {
+                            productAdapter.filterByName(searchQuery); // Применяем фильтр только если есть запрос
+                        }
+                        Log.d(TAG, "Список товаров обновлён, размер: " + productList.size());
+                    } else {
+                        Log.w(TAG, "Snapshots товаров равен null");
                     }
                 });
     }
@@ -170,9 +212,23 @@ public class AdminProductsActivity extends AppCompatActivity {
                         Toast.makeText(this, "Товар добавлен", Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     })
-                    .addOnFailureListener(e -> Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Ошибка добавления товара: " + e.getMessage());
+                        Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
         });
 
         dialog.show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (productsListener != null) {
+            productsListener.remove();
+        }
+        if (categoriesListener != null) {
+            categoriesListener.remove();
+        }
     }
 }

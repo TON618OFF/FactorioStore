@@ -29,8 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MainPage extends Fragment {
-
+public class MainPage extends Fragment implements CartManager.OnCartChangedListener {
     private static final String TAG = "MainPage";
     private static final int FILTER_SORT_REQUEST = 2;
     private static final int FAVORITE_UPDATE_REQUEST = 1;
@@ -38,13 +37,14 @@ public class MainPage extends Fragment {
     private RecyclerView productsRecyclerView;
     private ProductAdapter productAdapter;
     private FirebaseFirestore db;
-    private List<Product> productsList;
-    private List<Product> filteredList;
+    private List<Product> productsList = new ArrayList<>();
+    private List<Product> filteredList = new ArrayList<>();
     private Map<String, String> categoryNames;
     private String currentQuery = "";
     private boolean inStockFilter = false;
     private String priceSort = "none";
     private String quantitySort = "none";
+    private double ratingFilter = 0.0;
 
     @Nullable
     @Override
@@ -57,13 +57,13 @@ public class MainPage extends Fragment {
 
         productsRecyclerView = view.findViewById(R.id.products_recycler_view);
         productsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        productsList = new ArrayList<>();
-        filteredList = new ArrayList<>();
         productAdapter = new ProductAdapter(getContext(), filteredList);
         productsRecyclerView.setAdapter(productAdapter);
 
         MaterialButton filterButton = view.findViewById(R.id.filter_button);
         filterButton.setOnClickListener(v -> openFilterSortActivity());
+
+        CartManager.getInstance().addOnCartChangedListener(this);
 
         loadCategories();
 
@@ -81,6 +81,7 @@ public class MainPage extends Fragment {
             inStockFilter = data.getBooleanExtra("inStock", false);
             priceSort = data.getStringExtra("priceSort");
             quantitySort = data.getStringExtra("quantitySort");
+            ratingFilter = data.getDoubleExtra("ratingFilter", 0.0);
             applyFiltersAndSort();
         }
     }
@@ -91,11 +92,30 @@ public class MainPage extends Fragment {
         loadProductsFromFirestore();
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        CartManager.getInstance().removeOnCartChangedListener(this);
+    }
+
+    @Override
+    public void onCartChanged(List<CartItem> cartItems) {
+        Log.d(TAG, "Корзина изменилась в MainPage, элементов: " + cartItems.size());
+        for (CartItem item : cartItems) {
+            int position = getProductPositionById(item.getProductId());
+            if (position != -1) {
+                productAdapter.notifyItemChanged(position);
+            }
+        }
+        applyFiltersAndSort(); // Пересчитываем фильтры для актуального состояния
+    }
+
     private void openFilterSortActivity() {
         Intent intent = new Intent(getActivity(), FilterSortActivity.class);
         intent.putExtra("inStock", inStockFilter);
         intent.putExtra("priceSort", priceSort);
         intent.putExtra("quantitySort", quantitySort);
+        intent.putExtra("ratingFilter", ratingFilter);
         startActivityForResult(intent, FILTER_SORT_REQUEST);
     }
 
@@ -114,47 +134,44 @@ public class MainPage extends Fragment {
                         }
                         loadProductsFromFirestore();
                     } else {
-                        Log.e(TAG, "Ошибка загрузки категорий: " + task.getException());
-                        Toast.makeText(getContext(), "Ошибка загрузки категорий: " + task.getException(), Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка загрузки категорий: ", task.getException());
+                        Toast.makeText(getContext(), "Ошибка загрузки категорий", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
     private void loadProductsFromFirestore() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            fetchProducts(new ArrayList<>());
-            return;
-        }
-
-        String userId = user.getUid();
-        db.collection("users").document(userId).collection("favorites")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        List<String> favoriteIds = new ArrayList<>();
-                        for (QueryDocumentSnapshot doc : task.getResult()) {
-                            String productId = doc.getString("productId");
-                            if (productId != null) {
-                                favoriteIds.add(productId);
+        List<String> favoriteIds = new ArrayList<>();
+        if (user != null) {
+            String userId = user.getUid();
+            db.collection("users").document(userId).collection("favorites")
+                    .get()
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            for (QueryDocumentSnapshot doc : task.getResult()) {
+                                String productId = doc.getString("productId");
+                                if (productId != null) {
+                                    favoriteIds.add(productId);
+                                }
                             }
+                            Log.d(TAG, "Избранное загружено: " + favoriteIds.size() + " элементов");
+                        } else {
+                            Log.e(TAG, "Ошибка загрузки избранного: ", task.getException());
                         }
-                        Log.d(TAG, "Избранное загружено: " + favoriteIds.size() + " элементов");
                         fetchProducts(favoriteIds);
-                    } else {
-                        Log.e(TAG, "Ошибка загрузки избранного: " + task.getException());
-                        Toast.makeText(getContext(), "Ошибка загрузки избранного: " + task.getException(), Toast.LENGTH_SHORT).show();
-                        fetchProducts(new ArrayList<>());
-                    }
-                });
+                    });
+        } else {
+            fetchProducts(favoriteIds);
+        }
     }
 
     private void fetchProducts(List<String> favoriteIds) {
         db.collection("products")
-                .addSnapshotListener((snapshot, e) -> { // Возвращаем addSnapshotListener для обновлений в реальном времени
+                .addSnapshotListener((snapshot, e) -> {
                     if (e != null) {
-                        Log.e(TAG, "Ошибка загрузки товаров: " + e.getMessage());
-                        Toast.makeText(getContext(), "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка загрузки товаров: ", e);
+                        Toast.makeText(getContext(), "Ошибка загрузки товаров", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (snapshot != null) {
@@ -162,14 +179,14 @@ public class MainPage extends Fragment {
                         filteredList.clear();
                         Log.d(TAG, "Получено товаров: " + snapshot.size());
                         for (QueryDocumentSnapshot document : snapshot) {
-                            Product product = document.toObject(Product.class); // Используем toObject для автоматической десериализации
+                            Product product = document.toObject(Product.class);
                             if (product != null) {
                                 product.setId(document.getId());
                                 product.setFavorite(favoriteIds.contains(document.getId()));
                                 String categoryName = categoryNames.getOrDefault(product.getCategory(), "Без категории");
                                 product.setCategoryName(categoryName);
                                 productsList.add(product);
-                                Log.d(TAG, "Товар добавлен: " + product.getName() + ", ID: " + product.getId());
+                                Log.d(TAG, "Товар добавлен: " + product.getName() + ", ID: " + product.getId() + ", Rating: " + product.getAverageRating());
                             }
                         }
                         applyFiltersAndSort();
@@ -191,14 +208,45 @@ public class MainPage extends Fragment {
                 break;
             }
         }
+        int position = getProductPositionById(productId);
+        if (position != -1) {
+            filteredList.get(position).setFavorite(isFavorite);
+            productAdapter.notifyItemChanged(position);
+        }
+    }
+
+    private void addToCart(Product product) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(getContext(), "Войдите, чтобы добавить в корзину", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (product.getQuantity() <= 0) {
+            Toast.makeText(getContext(), "Товара нет в наличии", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CartItem cartItem = new CartItem(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                1,
+                product.getImageUrl()
+        );
+        CartManager.getInstance().addToCart(cartItem);
+        Toast.makeText(getContext(), product.getName() + " добавлен в корзину", Toast.LENGTH_SHORT).show();
+        int position = getProductPositionById(product.getId());
+        if (position != -1) {
+            productAdapter.notifyItemChanged(position);
+        }
+    }
+
+    private int getProductPositionById(String productId) {
         for (int i = 0; i < filteredList.size(); i++) {
-            Product product = filteredList.get(i);
-            if (product.getId().equals(productId)) {
-                product.setFavorite(isFavorite);
-                productAdapter.notifyItemChanged(i);
-                break;
+            if (filteredList.get(i).getId().equals(productId)) {
+                return i;
             }
         }
+        return -1;
     }
 
     private void applyFiltersAndSort() {
@@ -219,9 +267,11 @@ public class MainPage extends Fragment {
             }
 
             boolean matchesStock = !inStockFilter || product.getQuantity() > 0;
+            boolean matchesRating = ratingFilter == 0.0 || product.getAverageRating() >= ratingFilter;
 
-            if (matchesQuery && matchesStock) {
+            if (matchesQuery && matchesStock && matchesRating) {
                 filteredList.add(product);
+                Log.d(TAG, "Товар соответствует фильтру: " + product.getName() + ", Rating: " + product.getAverageRating());
             }
         }
 
@@ -235,10 +285,9 @@ public class MainPage extends Fragment {
         } else if ("desc".equals(quantitySort)) {
             Collections.sort(filteredList, (p1, p2) -> Integer.compare(p2.getQuantity(), p1.getQuantity()));
         } else {
-            // По умолчанию сортируем по timestamp (если он есть)
             Collections.sort(filteredList, (p1, p2) -> {
                 if (p1.getTimestamp() == null || p2.getTimestamp() == null) return 0;
-                return p2.getTimestamp().compareTo(p1.getTimestamp()); // Новые товары сверху
+                return p2.getTimestamp().compareTo(p1.getTimestamp());
             });
         }
 

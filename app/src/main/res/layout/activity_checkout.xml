@@ -35,7 +35,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:padding="20dp"
-        tools:listitem="@layout/item_cart"/>
+        tools:listitem="@layout/item_checkout"/>
 
     <!-- Блок способа оплаты -->
     <LinearLayout
@@ -179,6 +179,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="Согласен с условиями Правил пользования торговой площадкой и правилами возврата"
+            android:hint="Необходимо согласие для оформления"
             android:textColor="@color/white"
             android:textSize="14sp"
             android:maxWidth="300dp"/>

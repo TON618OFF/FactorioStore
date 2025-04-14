@@ -12,6 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -46,29 +48,22 @@ public class CheckoutActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_checkout);
 
-        // Инициализация Firebase
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // Инициализация UI
         initViews();
 
-        // Изначально кнопка неактивна
-        checkoutButton.setEnabled(false);
+        updateCheckoutButtonState(false);
 
-        // Получение данных из Intent
         cartItems = (List<CartItem>) getIntent().getSerializableExtra("cart_items");
         if (cartItems == null) cartItems = new ArrayList<>();
 
-        // Настройка RecyclerView с новым адаптером
         checkoutAdapter = new CheckoutAdapter(cartItems);
         checkoutRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         checkoutRecyclerView.setAdapter(checkoutAdapter);
 
-        // Установка начальных значений
         updateUI(calculateTotalPrice(cartItems));
 
-        // Слушатели
         setupListeners();
     }
 
@@ -87,33 +82,37 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        // Активация кнопки "Оформить заказ" при согласии с условиями
         termsCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            checkoutButton.setEnabled(isChecked);
-            if (!isChecked) {
-                Log.d(TAG, "Галочка снята, кнопка отключена");
-            }
+            updateCheckoutButtonState(isChecked);
         });
 
-        // Уведомление при попытке нажать неактивную кнопку
         checkoutButton.setOnClickListener(v -> {
-            if (!checkoutButton.isEnabled()) {
+            if (!termsCheckbox.isChecked()) {
                 Toast.makeText(this, "Пожалуйста, согласитесь с условиями использования", Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "Попытка нажать неактивную кнопку 'Оформить заказ'");
-            } else {
-                checkoutOrder();
+                return;
             }
+            checkStockBeforeCheckout();
         });
 
-        // Обновление комиссии при выборе способа оплаты
         paymentMethodGroup.setOnCheckedChangeListener((group, checkedId) -> {
             int totalPrice = calculateTotalPrice(cartItems);
             updateCommissionAndTotal(totalPrice, checkedId);
         });
 
-        // Инициализация комиссии для выбранного по умолчанию метода
         int initialCheckedId = paymentMethodGroup.getCheckedRadioButtonId();
         updateCommissionAndTotal(calculateTotalPrice(cartItems), initialCheckedId);
+    }
+
+    private void updateCheckoutButtonState(boolean isChecked) {
+        if (isChecked) {
+            checkoutButton.setEnabled(true);
+            checkoutButton.setText("Оформить заказ");
+            checkoutButton.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.circuit_green));
+        } else {
+            checkoutButton.setEnabled(false);
+            checkoutButton.setText("Согласитесь с условиями");
+            checkoutButton.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.coal_gray));
+        }
     }
 
     private void updateUI(int totalPrice) {
@@ -126,7 +125,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private void updateCommissionAndTotal(int totalPrice, int checkedId) {
         int commission = 0;
         if (checkedId == R.id.payment_card) {
-            commission = (int) (totalPrice * 0.05); // 5% комиссия для карты
+            commission = (int) (totalPrice * 0.05);
             findViewById(R.id.commission_layout).setVisibility(View.VISIBLE);
             commissionAmountText.setText(commission + " ₽");
             totalAmountText.setText((totalPrice + commission) + " ₽");
@@ -134,6 +133,48 @@ public class CheckoutActivity extends AppCompatActivity {
             findViewById(R.id.commission_layout).setVisibility(View.GONE);
             commissionAmountText.setText("0 ₽");
             totalAmountText.setText(totalPrice + " ₽");
+        }
+    }
+
+    private void checkStockBeforeCheckout() {
+        if (cartItems.isEmpty()) {
+            Toast.makeText(this, "Корзина пуста", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final int[] processedItems = {0};
+        AtomicBoolean stockAvailable = new AtomicBoolean(true);
+
+        for (CartItem item : cartItems) {
+            String productId = item.getProductId();
+            int requestedQuantity = item.getQuantity();
+
+            db.collection("products").document(productId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        processedItems[0]++;
+                        if (documentSnapshot.exists()) {
+                            Long currentQuantity = documentSnapshot.getLong("quantity");
+                            if (currentQuantity == null || currentQuantity < requestedQuantity) {
+                                stockAvailable.set(false);
+                                Toast.makeText(this, "Товара '" + item.getName() + "' нет в наличии", Toast.LENGTH_LONG).show();
+                            }
+                        } else {
+                            stockAvailable.set(false);
+                            Toast.makeText(this, "Товар '" + item.getName() + "' не найден", Toast.LENGTH_LONG).show();
+                        }
+
+                        if (processedItems[0] == cartItems.size()) {
+                            if (stockAvailable.get()) {
+                                checkoutOrder();
+                            }
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        processedItems[0]++;
+                        Toast.makeText(this, "Ошибка проверки наличия", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Ошибка Firestore: ", e);
+                    });
         }
     }
 
@@ -154,7 +195,6 @@ public class CheckoutActivity extends AppCompatActivity {
         int commission = paymentCard.isChecked() ? (int) (totalPrice * 0.05) : 0;
         int finalPrice = totalPrice + commission;
 
-        // Подготовка данных заказа
         Map<String, Object> orderData = new HashMap<>();
         orderData.put("userId", user.getUid());
         orderData.put("email", email);
@@ -165,10 +205,8 @@ public class CheckoutActivity extends AppCompatActivity {
         orderData.put("finalPrice", finalPrice);
         orderData.put("paymentMethod", paymentCard.isChecked() ? "card" : "cash");
 
-        // Создание батча для атомарного обновления
         WriteBatch batch = db.batch();
 
-        // Обновление количества товаров
         for (CartItem item : cartItems) {
             String productId = item.getProductId();
             int orderedQuantity = item.getQuantity();
@@ -176,34 +214,29 @@ public class CheckoutActivity extends AppCompatActivity {
                     "quantity", FieldValue.increment(-orderedQuantity));
         }
 
-        // Добавление заказа в коллекцию
         db.collection("orders")
                 .add(orderData)
                 .addOnSuccessListener(documentReference -> {
                     String orderId = documentReference.getId();
-
-                    // Выполняем батч для обновления товаров
                     batch.commit()
                             .addOnSuccessListener(aVoid -> {
-                                Log.i(TAG, "Количество товаров обновлено успешно");
+                                Log.d(TAG, "Количество товаров обновлено");
                                 completeCheckout(orderId, email, commission);
                             })
                             .addOnFailureListener(e -> {
-                                Log.e(TAG, "Ошибка обновления количества товаров: " + e.getMessage());
-                                Toast.makeText(this, "Ошибка при обновлении товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "Ошибка обновления товаров: ", e);
+                                Toast.makeText(this, "Ошибка при обновлении товаров", Toast.LENGTH_SHORT).show();
                             });
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Ошибка создания заказа: " + e.getMessage());
-                    Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Ошибка создания заказа: ", e);
+                    Toast.makeText(this, "Ошибка создания заказа", Toast.LENGTH_SHORT).show();
                 });
     }
 
     private void completeCheckout(String orderId, String email, int commission) {
-        // Очищаем корзину
         CartManager.getInstance().removeAllFromCart();
 
-        // Возвращаем результат в CartPageFragment
         Intent resultIntent = new Intent();
         resultIntent.putExtra("order_id", orderId);
         resultIntent.putExtra("email", email);

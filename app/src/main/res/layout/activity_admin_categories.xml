@@ -13,7 +13,18 @@
         android:textSize="24sp"
         android:textColor="@color/white"
         android:layout_gravity="center"
-        android:paddingBottom="20dp"/>
+        android:paddingBottom="10dp"/>
+
+    <EditText
+        android:id="@+id/search_categories_edit_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Поиск по названию"
+        android:textColor="@color/white"
+        android:textColorHint="#AAAAAA"
+        android:backgroundTint="@color/white"
+        android:padding="10dp"
+        android:layout_marginBottom="10dp"/>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_category_button"

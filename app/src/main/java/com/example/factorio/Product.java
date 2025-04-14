@@ -6,7 +6,8 @@ public class Product {
     private String id, name, imageUrl, description, category, categoryName;
     private int price, quantity;
     private boolean isFavorite;
-    private Timestamp timestamp; // Изменяем тип на Timestamp
+    private Timestamp timestamp;
+    private double averageRating; // Новое поле для среднего рейтинга
 
     public Product() {}
 
@@ -28,7 +29,8 @@ public class Product {
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public boolean isFavorite() { return isFavorite; }
     public void setFavorite(boolean favorite) { isFavorite = favorite; }
-
     public Timestamp getTimestamp() { return timestamp; }
     public void setTimestamp(Timestamp timestamp) { this.timestamp = timestamp; }
+    public double getAverageRating() { return averageRating; }
+    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
 }

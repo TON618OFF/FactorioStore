@@ -2,6 +2,7 @@ package com.example.factorio;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,21 +27,23 @@ import java.util.Map;
 
 public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapter.ProductViewHolder> {
 
+    private static final String TAG = "AdminProductAdapter";
     private Context context;
     private List<Product> productList;
+    private List<Product> filteredProductList;
     private List<String> categoryNames;
-    private List<Category> categories; // Список категорий
+    private List<Category> categories;
     private FirebaseFirestore db;
 
     public AdminProductAdapter(Context context, List<Product> productList, List<Category> categories) {
         this.context = context;
-        this.productList = productList;
+        this.productList = new ArrayList<>(productList);
+        this.filteredProductList = new ArrayList<>(productList);
         this.categories = categories;
         this.categoryNames = getCategoryNames();
         this.db = FirebaseFirestore.getInstance();
     }
 
-    // Изменяем модификатор доступа на public
     public List<String> getCategoryNames() {
         List<String> names = new ArrayList<>();
         for (Category category : categories) {
@@ -55,6 +58,34 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
         notifyDataSetChanged();
     }
 
+    // Обновление списка товаров
+    public void updateProductList(List<Product> newProductList) {
+        this.productList.clear();
+        this.productList.addAll(newProductList);
+        this.filteredProductList.clear();
+        this.filteredProductList.addAll(newProductList); // Изначально показываем все товары
+        notifyDataSetChanged();
+        Log.d(TAG, "Список товаров обновлён в адаптере, размер: " + filteredProductList.size());
+    }
+
+    public void filterByName(String query) {
+        filteredProductList.clear();
+        String lowerQuery = query.trim().toLowerCase();
+
+        if (lowerQuery.isEmpty()) {
+            filteredProductList.addAll(productList); // Если запрос пуст, показываем все
+        } else {
+            for (Product product : productList) {
+                String name = product.getName() != null ? product.getName().toLowerCase() : "";
+                if (name.contains(lowerQuery)) {
+                    filteredProductList.add(product);
+                }
+            }
+        }
+        notifyDataSetChanged();
+        Log.d(TAG, "Фильтрация завершена, размер filteredProductList: " + filteredProductList.size());
+    }
+
     @NonNull
     @Override
     public ProductViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -64,13 +95,13 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
-        Product product = productList.get(position);
+        Product product = filteredProductList.get(position);
         holder.bind(product);
     }
 
     @Override
     public int getItemCount() {
-        return productList.size();
+        return filteredProductList.size();
     }
 
     class ProductViewHolder extends RecyclerView.ViewHolder {
@@ -90,11 +121,11 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
         }
 
         public void bind(Product product) {
-            nameText.setText(product.getName());
+            nameText.setText(product.getName() != null ? product.getName() : "Без названия");
             priceText.setText(String.valueOf(product.getPrice()));
-            imageUrlText.setText(product.getImageUrl());
-            descriptionText.setText(product.getDescription());
-            categoryText.setText(product.getCategoryName());
+            imageUrlText.setText(product.getImageUrl() != null ? product.getImageUrl() : "Нет URL");
+            descriptionText.setText(product.getDescription() != null ? product.getDescription() : "Без описания");
+            categoryText.setText(product.getCategoryName() != null ? product.getCategoryName() : "Неизвестная категория");
             quantityText.setText(String.valueOf(product.getQuantity()));
 
             updateButton.setOnClickListener(v -> showUpdateProductDialog(product));
@@ -186,7 +217,10 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                             Toast.makeText(context, "Товар обновлён", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                         })
-                        .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        .addOnFailureListener(e -> {
+                            Log.e(TAG, "Ошибка обновления товара: " + e.getMessage());
+                            Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
             });
 
             dialog.show();
@@ -200,7 +234,10 @@ public class AdminProductAdapter extends RecyclerView.Adapter<AdminProductAdapte
                         db.collection("products").document(productId)
                                 .delete()
                                 .addOnSuccessListener(aVoid -> Toast.makeText(context, "Товар удалён", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Ошибка удаления товара: " + e.getMessage());
+                                    Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
                     })
                     .setNegativeButton("Нет", null)
                     .show();

@@ -21,8 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class CategoryProductsActivity extends AppCompatActivity {
-
+public class CategoryProductsActivity extends AppCompatActivity implements CartManager.OnCartChangedListener {
     private static final String TAG = "CategoryProductsActivity";
     private RecyclerView categoryProductsRecyclerView;
     private TextView categoryTitle;
@@ -58,10 +57,27 @@ public class CategoryProductsActivity extends AppCompatActivity {
         categoryProductsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         categoryProductsRecyclerView.setAdapter(productAdapter);
 
-        categoryTitle.setText(categoryName);
-        loadFavoritesAndProducts();
+        categoryTitle.setText(categoryName != null ? categoryName : "Товары");
+
+        CartManager.getInstance().addOnCartChangedListener(this);
+        CartManager.getInstance().loadCartFromFirestore(items -> {
+            Log.d(TAG, "Корзина загружена в CategoryProductsActivity, элементов: " + items.size());
+            loadFavoritesAndProducts();
+        });
 
         backFab.setOnClickListener(v -> finish());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        CartManager.getInstance().removeOnCartChangedListener(this);
+    }
+
+    @Override
+    public void onCartChanged(List<CartItem> cartItems) {
+        Log.d(TAG, "Корзина изменилась в CategoryProductsActivity, элементов: " + cartItems.size());
+        productAdapter.notifyDataSetChanged();
     }
 
     private void loadFavoritesAndProducts() {
@@ -77,7 +93,7 @@ public class CategoryProductsActivity extends AppCompatActivity {
                 .addSnapshotListener((snapshot, e) -> {
                     if (e != null) {
                         Log.e(TAG, "Ошибка загрузки избранного: " + e.getMessage());
-                        Toast.makeText(this, "Ошибка загрузки избранного: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Ошибка загрузки избранного", Toast.LENGTH_SHORT).show();
                         loadProductsByCategory(new HashSet<>());
                         return;
                     }
@@ -96,51 +112,40 @@ public class CategoryProductsActivity extends AppCompatActivity {
     }
 
     private void loadProductsByCategory(Set<String> favoriteIds) {
+        Query query;
         if ("all".equals(categoryId)) {
-            db.collection("products")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .addSnapshotListener((snapshot, e) -> {
-                        if (e != null) {
-                            Log.e(TAG, "Ошибка загрузки всех товаров: " + e.getMessage());
-                            Toast.makeText(this, "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        processProducts(snapshot, favoriteIds);
-                    });
+            query = db.collection("products")
+                    .orderBy("timestamp", Query.Direction.DESCENDING);
         } else {
-            db.collection("products")
+            query = db.collection("products")
                     .whereEqualTo("category", categoryId)
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .addSnapshotListener((snapshot, e) -> {
-                        if (e != null) {
-                            Log.e(TAG, "Ошибка загрузки товаров для категории " + categoryId + ": " + e.getMessage());
-                            Toast.makeText(this, "Ошибка загрузки товаров: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        processProducts(snapshot, favoriteIds);
-                    });
+                    .orderBy("timestamp", Query.Direction.DESCENDING);
         }
-    }
 
-    private void processProducts(com.google.firebase.firestore.QuerySnapshot snapshot, Set<String> favoriteIds) {
-        productsList.clear();
-        if (snapshot != null) {
-            Log.d(TAG, "Получено товаров: " + snapshot.size());
-            for (QueryDocumentSnapshot document : snapshot) {
-                Product product = document.toObject(Product.class);
-                product.setId(document.getId());
-                product.setFavorite(favoriteIds.contains(product.getId()));
-                product.setCategoryName(categoryName);
-                productsList.add(product);
-                Log.d(TAG, "Товар добавлен: " + product.getName() + ", ID: " + product.getId());
+        query.addSnapshotListener((snapshot, e) -> {
+            if (e != null) {
+                Log.e(TAG, "Ошибка загрузки товаров для категории " + categoryId + ": " + e.getMessage());
+                Toast.makeText(this, "Ошибка загрузки товаров", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            productsList.clear();
+            if (snapshot != null) {
+                Log.d(TAG, "Получено товаров: " + snapshot.size());
+                for (QueryDocumentSnapshot document : snapshot) {
+                    Product product = document.toObject(Product.class);
+                    if (product != null) {
+                        product.setId(document.getId());
+                        product.setFavorite(favoriteIds.contains(product.getId()));
+                        product.setCategoryName(categoryName != null ? categoryName : "Без категории");
+                        Long quantity = document.getLong("quantity");
+                        product.setQuantity(quantity != null ? quantity.intValue() : 0);
+                        productsList.add(product);
+                        Log.d(TAG, "Добавлен товар: " + product.getName() + ", ID: " + product.getId() + ", В наличии: " + product.getQuantity() + ", В корзине: " + CartManager.getInstance().getItemQuantity(product.getId())); // Исправлено: getItemQuantity
+                    }
+                }
             }
             productAdapter.notifyDataSetChanged();
-            if (productsList.isEmpty()) {
-                Log.w(TAG, "Список товаров пуст для категории: " + categoryId);
-                Toast.makeText(this, "Товаров в этой категории нет", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            Log.w(TAG, "Snapshot равен null");
-        }
+            Log.d(TAG, "UI обновлён, товаров в списке: " + productsList.size());
+        });
     }
 }
